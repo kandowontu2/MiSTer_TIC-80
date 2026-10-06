@@ -86,7 +86,7 @@ int main() {
     }
     CHECK(!bus.dut.source_valid && bus.frame_writes == 0);
     CHECK(bus.memory[address(TM_IDENTITY_OFFSET)] == ((uint64_t)TM_CART_SOURCE_MAGIC<<32 | TM_MAGIC));
-    CHECK(bus.memory[address(TM_GEOMETRY_OFFSET)] == ((uint64_t)TM_INPUT_EXTENSION_MAGIC<<32 | TM_HEIGHT << 16 | TM_WIDTH));
+    CHECK(bus.memory[address(TM_GEOMETRY_OFFSET)] == ((uint64_t)TM_LINUX_INPUT_MAGIC<<32 | TM_HEIGHT << 16 | TM_WIDTH));
     CHECK(bus.memory[address(TM_JOY3_OFFSET)] == 0xFFEECCAA);
     for (unsigned prior_state : {0u, 1u}) {
         bus.dut.cart_meta = prior_state; bus.dut.osd_status = 1;

@@ -29,6 +29,11 @@ metadata or compiler output. For an offline runtime build, extract it and set
 `-DTM_TIC80_SOURCE=upstream/tic80` instead of running bootstrap. `source-manifest.json`
 records every supplied file and upstream revision. Do not confuse an archive
 snapshot with a Git checkout when running Git-based staging tools.
+Current repository source also stages pocketpy's CMake recipe with an explicit
+binary directory, so `TM_TIC80_SOURCE` can point outside the integration tree.
+The first preview's corresponding-source archive predates that fix. For that
+archive, keep the TIC-80 snapshot beneath the integration source directory
+when configuring its runtime.
 
 ## MiSTer ARM programs
 
@@ -71,6 +76,11 @@ qualification. Internal timing checks do not establish complete external-I/O
 or CRT compatibility.
 
 ## Installer and tests
+
+The build-time pForth dictionary helper is statically linked so ARM/QEMU can
+run it without a target loader installed on the build host. Runtime executables
+retain the SDK's dynamic-libc profile. The helper and generated dictionary
+belong to each separate build directory.
 
 ```sh
 python3 tests/install_script_test.py

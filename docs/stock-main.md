@@ -91,3 +91,52 @@ Evidence is retained in
 This establishes a narrow native stock-Main Studio loading/playback check.
 It does not qualify the player, startup/reset corner cases, source-save
 workflow or the proposed per-core horizontal-wheel path.
+
+The development source adds a bounded per-core evdev reader and an FPGA OSD
+edge epoch. Host tests cover independent coarse/high-resolution devices,
+companion suppression, lost events, disconnect, node replacement, menu-time
+motion, large queued bursts and descriptor cleanup. Real Studio and player
+cartridge APIs agree on direction, wrap, burst limits and OSD suppression.
+Input, DDR and combined-transport RTL checks pass. The seed-22 FPGA build
+completed its 140 internal timing checks and required post-fit audits with
+minimum reported slack of 0.040 ns. Its RBF SHA-256 is
+`5595ba3246a1d8af1cc6926a518da1907d287c5e2b96a8de320fb6cefb5feb6d`.
+This is a separate development candidate, not the published release, and has
+not been installed or qualified on a live HDMI display.
+
+Inspection of unmodified Main identifies a remaining access constraint:
+`input.cpp` initializes `grabbed = 1` and uses `EVIOCGRAB` when discovering
+devices. A second non-grabbing evdev client cannot receive events while Main
+owns that grab. The local simulated kernel queues do not cover this condition
+and do not establish stock-Main horizontal scrolling. A HID report path or
+another supported access mechanism must resolve it without changing Main or
+disabling the ordinary controller, keyboard and pointer paths. The board kernel
+has HIDRAW and UHID enabled; actual device-report coverage remains unverified.
+See the kernel's [hidraw interface documentation](https://www.kernel.org/doc/html/latest/hid/hidraw.html).
+
+An isolated HID descriptor/report decoder is now available in `src/hid_pan.c`.
+It reads relative Consumer AC Pan fields, signed and unaligned reports,
+input report IDs, GET feature values and logical-collection resolution
+multipliers. Fractional detents are kept per field; truncated input reports
+discard them without publishing partial motion. It never changes device
+features. Frozen-source tests pass under host ASan/UBSan and SDK ARM/QEMU,
+including composite mouse/keyboard descriptors, multiplier priority,
+multi-value feature fields and 20,000 deterministic descriptor mutations.
+Evidence is `build/hid-pan-local-v2-20261005/result.json`.
+The separate Release-mode CMake/CTest run also passes both the HID decoder and
+evdev reader tests (`build/wheel-host-cmake-20261005/result.json`).
+
+The decoder is not yet connected to native HIDraw discovery or the frontends.
+Device GET feature requests can block; that I/O must be isolated from audio
+publication. Hotplug, OSD queue draining, bounded worker failure/recovery and
+actual report delivery while stock Main owns evdev still need verification.
+The proposed evdev path must not be treated as functional stock-Main horizontal
+scrolling before that work is complete.
+
+The first fresh SDK compile exited 2 because its build-time Forth bootstrap
+was dynamically linked and QEMU could not find the target loader. Its original
+failed coordinator/result remain in `build/linux-wheel-sdk-v2-20261005`.
+The helper now links statically; a separate target dictionary generation passes
+and its ELF has no interpreter segment. A corrected full build uses the fresh
+frozen snapshot in `build/linux-wheel-sdk-v3-20261005`; its result must be checked
+separately. None of these local checks establishes full stock-Main qualification.

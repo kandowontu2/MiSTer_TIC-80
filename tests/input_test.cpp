@@ -34,11 +34,19 @@ int main()
     mouse(255,255,1,1,true);assert((d.mouse&65535)==239);
     assert((d.mouse>>32)==0);
     d.osd_open=1;tick();tick();tick();
+    assert(((d.mouse>>19)&0x1fff)==4097);
     for(unsigned code=0;code<512;++code) assert(!held(code));
     assert(((d.mouse>>16)&7)==0);
     key(0x1c,true);mouse(-20,-10,5,7);
     assert(!held(0x1c) && (d.mouse>>32)==0 && (d.mouse&65535)==239);
     d.osd_open=0;tick();tick();tick();assert(!held(0x1c));
+    assert(((d.mouse>>19)&0x1fff)==2);
+    // Rapid complete OSD cycles remain visible through their edge epoch.
+    for(unsigned n=0;n<2047;++n) {
+        d.osd_open=1;tick();tick();tick();
+        d.osd_open=0;tick();tick();tick();
+    }
+    assert(((d.mouse>>19)&0x1fff)==0); // 12-bit epoch wraps
     key(0x1c,false);key(0x1c,true);assert(held(0x1c));
     puts("FPGA input: all 512 physical keys, modifier sides, pointer bounds, signed wheel, OSD clearing passed");
 }

@@ -12,6 +12,7 @@ localparam logic [31:0] TM_CART_CAPACITY = 32'h00400000;
 localparam logic [31:0] TM_CART_SOURCE_CAPACITY = 32'h00000100;
 localparam logic [31:0] TM_CART_SOURCE_MAGIC = 32'h314E5354;
 localparam logic [31:0] TM_INPUT_EXTENSION_MAGIC = 32'h31575354;
+localparam logic [31:0] TM_LINUX_INPUT_MAGIC = 32'h32495754;
 localparam logic [31:0] TM_KEYBOARD_BYTES = 32'h00000040;
 localparam logic [31:0] TM_IDENTITY_OFFSET = 32'h00000000;
 localparam logic [31:0] TM_GEOMETRY_OFFSET = 32'h00000008;

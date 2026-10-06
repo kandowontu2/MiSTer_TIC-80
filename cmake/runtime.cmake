@@ -78,7 +78,25 @@ function(tm_add_runtime)
     target_sources(luaapi PRIVATE "${patched_luaapi}")
     if(TM_BUILD_EXTENDED_RUNTIME)
         foreach(recipe quickjs moon yue fennel scheme squirrel pocketpy wren janet wasm)
-            include("${TM_TIC80_SOURCE}/cmake/${recipe}.cmake")
+            if(recipe STREQUAL "pocketpy")
+                # An external TIC-80 checkout or source archive requires an
+                # explicit binary directory for upstream's add_subdirectory.
+                # Stage the recipe while preserving its original contents.
+                file(READ "${TM_TIC80_SOURCE}/cmake/pocketpy.cmake" pocketpy_recipe)
+                set(pocketpy_directory [=[    add_subdirectory(${THIRDPARTY_DIR}/pocketpy)]=])
+                string(FIND "${pocketpy_recipe}" "${pocketpy_directory}" pocketpy_directory_at)
+                if(pocketpy_directory_at EQUAL -1)
+                    message(FATAL_ERROR "Pinned pocketpy subdirectory binding changed")
+                endif()
+                string(REPLACE "${pocketpy_directory}"
+                    [=[    add_subdirectory("${THIRDPARTY_DIR}/pocketpy" "${CMAKE_BINARY_DIR}/pocketpy")]=]
+                    pocketpy_recipe "${pocketpy_recipe}")
+                set(pocketpy_staged "${CMAKE_BINARY_DIR}/runtime_adapters/pocketpy.cmake")
+                tm_write_generated("${pocketpy_staged}" "${pocketpy_recipe}")
+                include("${pocketpy_staged}")
+            else()
+                include("${TM_TIC80_SOURCE}/cmake/${recipe}.cmake")
+            endif()
         endforeach()
         # Four unused permanent strings are allocated during s7's one-time
         # initialization and lose their only roots under optimization. Omit

@@ -1,6 +1,7 @@
 #define _POSIX_C_SOURCE 200809L
 #include "tic80_mister/backend.h"
 #include "tic80_mister/memory_map.h"
+#include "tic80_mister/linux_wheel.h"
 #include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -119,6 +120,7 @@ int tm_backend_open(tm_backend *b, const char *test_file)
 {
     memset(b, 0, sizeof *b);
     b->fd = -1;
+    b->physical_input = !test_file;
     b->core_name_path = test_file ? NULL : "/tmp/CORENAME";
     if (!test_file) {
 #if !defined(__arm__)
@@ -180,6 +182,8 @@ int tm_backend_start(tm_backend *b)
         return -1;
     }
     b->session = nonce;
+    tm_linux_wheel_close(b->linux_wheel);
+    b->linux_wheel = NULL;
     /* The session ACK and cleared presented word are separate DDR writes. */
     limit = now_ms() + 1000;
     while (identity_ok(b) && (read_reg(b, TM_VIDEO_PRESENTED_OFFSET) != 0 || read_reg(b, TM_AUDIO_READ_OFFSET) != 0)
@@ -216,11 +220,23 @@ int tm_backend_inputs(tm_backend *b, tm_input_snapshot *snapshot)
         next.wheel = read_reg(b, TM_MOUSE_OFFSET + 4);
         // The geometry capability comes from the current FPGA, unlike unused
         // DDR bytes which can survive a core reload. Old bitstreams yield zero.
-        next.horizontal_wheel = read_reg(b, TM_GEOMETRY_OFFSET + 4) == TM_INPUT_EXTENSION_MAGIC ?
+        uint32_t capability = read_reg(b, TM_GEOMETRY_OFFSET + 4);
+        next.mouse_gate = capability == TM_LINUX_INPUT_MAGIC ? (next.mouse >> 19) | 8192u : 0;
+        next.horizontal_wheel = capability == TM_INPUT_EXTENSION_MAGIC || capability == TM_LINUX_INPUT_MAGIC ?
             read_reg(b, TM_HORIZONTAL_WHEEL_OFFSET) : 0;
         for (unsigned i = 0; i < 4; ++i) next.joystick[i] = read_reg(b, TM_JOY0_OFFSET + i*8);
         if (sequence == read_reg(b, TM_KEYBOARD_OFFSET)) {
             if (!session_ok(b)) return -1;
+            if (b->physical_input && capability == TM_LINUX_INPUT_MAGIC) {
+                if (!b->linux_wheel) b->linux_wheel = tm_linux_wheel_open(NULL);
+                if (!b->linux_wheel) return -1;
+                next.horizontal_wheel = tm_linux_wheel_poll(b->linux_wheel, now_ms(),
+                    !(next.mouse_gate & 4096) && !(read_reg(b, TM_STATUS_OFFSET) & 1), next.mouse_gate & 4095);
+                if (!session_ok(b)) return -1;
+                // Device discovery/draining can overlap a new FPGA input
+                // snapshot. Re-read its gate before returning Linux events.
+                if (sequence != read_reg(b, TM_KEYBOARD_OFFSET)) continue;
+            }
             b->inputs = next;
             *snapshot = next;
             return 1;
@@ -417,6 +433,8 @@ uint32_t tm_backend_gamepads(tm_backend *b)
 }
 void tm_backend_close(tm_backend *b)
 {
+    tm_linux_wheel_close(b->linux_wheel);
+    b->linux_wheel = NULL;
     free(b->deferred_frame);
     b->deferred_frame = NULL;
     b->deferred_valid = 0;

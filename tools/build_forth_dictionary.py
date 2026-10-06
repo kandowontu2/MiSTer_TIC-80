@@ -25,7 +25,7 @@ sources = [csrc / name.strip() for name in (csrc / "sources.cmake").read_text().
            if name.strip().endswith(".c")]
 sources += [csrc / "stdio" / name for name in ["pf_fileio_stdio.c", "pf_io_stdio.c"]]
 exe = work / "pforth-bootstrap"
-subprocess.run([a.compiler, *shlex.split(a.flags), "-O2", "-w", "-DPF_SUPPORT_FP",
+subprocess.run([a.compiler, *shlex.split(a.flags), "-static", "-O2", "-w", "-DPF_SUPPORT_FP",
                 "-I" + str(csrc), *map(str, sources), str(csrc / "pf_main.c"),
                 "-lm", "-o", str(exe)], check=True)
 command = ([a.runner] if a.runner else []) + [str(exe)]

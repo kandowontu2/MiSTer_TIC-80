@@ -94,6 +94,24 @@ int main(void)
     tm_input_convert(&state,&s,&input); assert(input.mouse.scrollx==-1);
     tm_input_convert(&state,&s,&input); assert(!input.mouse.scrollx);
     static tic_cartridge cart;
+    // Pending wheel detents must not continue scrolling through the OSD.
+    s.horizontal_wheel+=65;s.wheel-=65;
+    tm_input_convert(&state,&s,&input);assert(input.mouse.scrollx==31 && input.mouse.scrolly==31);
+    s.mouse_gate=4097;tm_input_convert(&state,&s,&input);assert(!input.mouse.scrollx && !input.mouse.scrolly);
+    s.horizontal_wheel+=120;s.wheel-=120;
+    tm_input_convert(&state,&s,&input);assert(!input.mouse.scrollx && !input.mouse.scrolly);
+    s.mouse_gate=2;tm_input_convert(&state,&s,&input);assert(!input.mouse.scrollx && !input.mouse.scrolly);
+    s.horizontal_wheel++;s.wheel--;
+    tm_input_convert(&state,&s,&input);assert(input.mouse.scrollx==1 && input.mouse.scrolly==1);
+    s.horizontal_wheel+=65;tm_input_convert(&state,&s,&input);assert(input.mouse.scrollx==31);
+    s.mouse_gate=4;tm_input_convert(&state,&s,&input);assert(!input.mouse.scrollx); // unseen OSD cycle
+    s.mouse_gate=0;tm_input_convert(&state,&s,&input); // new cartridge API baseline
+    // A capability publication can replace stale legacy wheel DDR at boot.
+    // Its validity marker changes the baseline even when the OSD epoch is zero.
+    s.horizontal_wheel=0xdeadbeef;tm_input_convert(&state,&s,&input);
+    s.horizontal_wheel=0;s.mouse_gate=8192;tm_input_convert(&state,&s,&input);
+    assert(!input.mouse.scrollx && !state.pending_horizontal_wheel);
+    s.mouse_gate=0;tm_input_convert(&state,&s,&input);
     strcpy(cart.code.data,"-- script: lua\nfunction TIC() if key(1) then pmem(0,pmem(0)+1) end if keyp(1) then pmem(1,pmem(1)+1) end local x,y,l,m,r,sx,sy=mouse(); pmem(2,x); pmem(3,y); pmem(4,(l and 1 or 0)+(m and 2 or 0)+(r and 4 or 0)); pmem(5,sy+32); pmem(6,sx+32) end\n");
     u8 *bytes=malloc(sizeof cart*2);assert(bytes);
     s32 size=tic_cart_save(&cart,bytes);assert(size>0);

@@ -8,6 +8,7 @@
 typedef struct {
     uint32_t keys[16]; /* PS/2 set-2 physical codes; extended codes add 256. */
     uint32_t mouse;    /* x, y, then PS/2 left/right/middle button bits. */
+    uint32_t mouse_gate; /* OSD epoch bits 11:0, open bit 12, capability bit 13; zero on old FPGA. */
     uint32_t wheel;    /* wrapping signed vertical-wheel total */
     uint32_t horizontal_wheel; /* wrapping signed total, positive right */
     uint32_t joystick[4]; /* raw MiSTer buttons, including remapped keyboard actions */
@@ -30,6 +31,8 @@ typedef struct {
     uint64_t video_wait_started_ms;
     uint8_t *deferred_frame;
     int deferred_valid;
+    struct tm_linux_wheel *linux_wheel;
+    int physical_input;
 } tm_backend;
 /* NULL selects /dev/mem on ARM. A regular file is allowed for transport tests.
  * No payload/control writes occur before identity and a moving heartbeat pass. */

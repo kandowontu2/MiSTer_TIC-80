@@ -181,6 +181,14 @@ int main(void)
     assert(tm_backend_inputs(&b,&inputs)==1 && inputs.horizontal_wheel==0);
     REG(m,TM_GEOMETRY_OFFSET+4)=TM_INPUT_EXTENSION_MAGIC;
     assert(tm_backend_inputs(&b,&inputs)==1 && inputs.horizontal_wheel==0xdeadbeef);
+    assert(!inputs.mouse_gate);
+    REG(m,TM_GEOMETRY_OFFSET+4)=TM_LINUX_INPUT_MAGIC;
+    REG(m,TM_MOUSE_OFFSET)=0x800d4178;
+    assert(tm_backend_inputs(&b,&inputs)==1 && inputs.mouse_gate==12289);
+    assert(!b.linux_wheel); // modeled DDR cannot open physical input devices
+    REG(m,TM_GEOMETRY_OFFSET+4)=TM_INPUT_EXTENSION_MAGIC;
+    REG(m,TM_MOUSE_OFFSET)=0x00054178;
+    assert(tm_backend_inputs(&b,&inputs)==1 && !inputs.mouse_gate);
     for(unsigned i=0;i<4;++i) assert(inputs.joystick[i]==0xff00u+(i<<16));
     REG(m,TM_KEYBOARD_OFFSET)=3;
     REG(m,TM_KEYBOARD_BITS_OFFSET)=0xBAD;

@@ -217,7 +217,7 @@ module tic80_ddr_video (
                         end
                         1: begin
                             write_address <= 29'((TM_PHYSICAL_BASE + TM_GEOMETRY_OFFSET) >> 3);
-                            write_data <= {TM_INPUT_EXTENSION_MAGIC, geometry};
+                            write_data <= {TM_LINUX_INPUT_MAGIC, geometry};
                         end
                         2: begin
                             write_address <= 29'((TM_PHYSICAL_BASE + TM_SESSION_ACK_OFFSET) >> 3);

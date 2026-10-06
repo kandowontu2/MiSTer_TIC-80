@@ -6,7 +6,8 @@ module tic80_input (
     input logic [24:0] ps2_mouse,
     input logic [15:0] ps2_mouse_ext,
     output logic [511:0] keys,
-    // [7:0] x, [15:8] y, [18:16] PS/2 left/right/middle; [63:32] wheel total.
+    // [7:0] x, [15:8] y, [18:16] buttons; [30:19] OSD edge epoch;
+    // [31] synchronized OSD-open; [63:32] vertical wheel total.
     output logic [63:0] mouse
 );
     logic key_toggle, mouse_toggle;
@@ -14,6 +15,8 @@ module tic80_input (
     logic [7:0] mouse_x, mouse_y;
     logic [2:0] mouse_buttons;
     logic [31:0] wheel;
+    logic osd_previous;
+    logic [11:0] osd_epoch;
     logic signed [10:0] x_next, y_next;
     logic signed [9:0] dx, dy;
     always_comb begin
@@ -24,10 +27,12 @@ module tic80_input (
         x_next = $signed({3'd0, mouse_x}) + {dx[9], dx};
         y_next = $signed({3'd0, mouse_y}) - {dy[9], dy};
     end
-    assign mouse = {wheel, 13'd0, mouse_buttons, mouse_y, mouse_x};
+    assign mouse = {wheel, osd_sync[1], osd_epoch, mouse_buttons, mouse_y, mouse_x};
     always_ff @(posedge clk) begin
         if (reset) begin
             osd_sync <= 0;
+            osd_previous <= 0;
+            osd_epoch <= 0;
             key_toggle <= ps2_key[10];
             mouse_toggle <= ps2_mouse[24];
             keys <= 0;
@@ -37,6 +42,8 @@ module tic80_input (
             wheel <= 0;
         end else begin
             osd_sync <= {osd_sync[0], osd_open};
+            osd_previous <= osd_sync[1];
+            if (osd_previous != osd_sync[1]) osd_epoch <= osd_epoch + 12'd1;
             key_toggle <= ps2_key[10];
             mouse_toggle <= ps2_mouse[24];
             if (osd_sync[1]) begin

@@ -12,6 +12,7 @@
   "cart_source_capacity": 256,
   "cart_source_magic": 827216724,
   "input_extension_magic": 827806548,
+  "linux_input_magic": 843667284,
   "keyboard_bytes": 64,
   "offsets": {
     "IDENTITY": 0,

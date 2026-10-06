@@ -69,8 +69,26 @@ int main(void)
         }
     }
     CHECK(!ss.pending_horizontal_wheel && !ps.pending_horizontal_wheel);
+    // Cart-visible input in both real frontends discards backlog at either
+    // OSD edge and after an entire OSD cycle missed between input snapshots.
+    const int gated_deltas[]={65,0,120,0,1,65,0,0,-1};
+    const unsigned gates[]={0,4097,4097,2,2,2,4,4,4};
+    const int gated_expected[]={-31,0,0,0,-1,-31,0,0,1};
+    for(unsigned n=0;n<sizeof gates/sizeof *gates;++n,++frames) {
+        snapshot.horizontal_wheel+=(uint32_t)gated_deltas[n];snapshot.mouse_gate=gates[n];
+        tic80_input si={0},pi={0};
+        tm_input_convert(&ss,&snapshot,&si);tm_input_convert_player(&ps,&snapshot,&pi);
+        tick(studio,si);tic80_tick(player,pi,counter,frequency);tic80_sound(player);
+        int value=gated_expected[n];sum+=value;if(value>0)positive+=value;else negative-=value;
+        const uint32_t values[]={(uint32_t)(value+32),(uint32_t)sum,(uint32_t)positive,(uint32_t)negative,32};
+        for(unsigned p=0;p<5;++p) {
+            CHECK(tic_api_pmem(getMemory(studio),p,0,false)==values[p]);
+            CHECK(tic_api_pmem((tic_mem*)player,p,0,false)==values[p]);
+        }
+    }
+    CHECK(!ss.pending_horizontal_wheel && !ps.pending_horizontal_wheel);
     tic80_delete(player); studio_delete(studio); tm_studio_bind(NULL);
     CHECK(!nftw(folder,cleanup,16,FTW_DEPTH|FTW_PHYS));
-    puts("Actual Studio RUN and library player mouse(): direction, wrap and both burst limits agree without lost or reversed detents");
+    puts("Actual Studio RUN and library player mouse(): direction, wrap, burst limits and OSD edge/backlog suppression agree");
     return 0;
 }

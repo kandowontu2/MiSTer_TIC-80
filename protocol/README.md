@@ -101,8 +101,22 @@ the border margin expected by the pinned player API. MOUSE high32 is a wrapping
 signed raw PS/2 vertical-wheel total (positive downward). ARM reverses its sign
 to match TIC-80's positive-upward scroll API, consumes deltas into a queue, and delivers at
 most the runtime's signed six-bit range each tick; large events are not dropped.
-The common MiSTer PS/2 transport does not provide horizontal-wheel events;
-that portion of full mouse support remains pending.
+The common MiSTer PS/2 transport does not provide horizontal-wheel events.
+The previously tested development prototype uses a Main extension and wrapping
+HORIZONTAL_WHEEL total, advertised by GEOMETRY's high word
+`TM_INPUT_EXTENSION_MAGIC`. A stock-Main replacement remains in development.
+
+The experimental `TM_LINUX_INPUT_MAGIC` capability additionally publishes
+OSD-open in MOUSE bit 31 and a wrapping 12-bit OSD edge epoch in bits 30:19.
+These fields participate in the same coherent input snapshot. The epoch changes
+at both edges, allowing ARM to discard queued motion even when an entire OSD
+cycle occurred between reads. ARM's private `mouse_gate` adds a validity bit
+to distinguish this format from stale legacy wheel data during startup; that
+bit is not stored in DDR. Older bitstreams never supply these gate fields.
+This capability and the per-core Linux wheel reader have local regression
+coverage but are not part of the published, hardware-qualified prototype.
+Stock Main normally grabs evdev devices, so direct event access still needs
+a compatible implementation and native qualification.
 
 OSD visibility clears held keys/buttons and discards menu-time events while
 keeping pointer position, so releases filtered by MiSTer's menu cannot leave

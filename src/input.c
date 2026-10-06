@@ -75,11 +75,14 @@ void tm_input_convert(tm_input_state *state, const tm_input_snapshot *s, tic80_i
     input->mouse.left = (s->mouse >> 16) & 1;
     input->mouse.right = (s->mouse >> 17) & 1;
     input->mouse.middle = (s->mouse >> 18) & 1;
-    if (!state->initialized) {
+    if (!state->initialized || state->mouse_gate != s->mouse_gate || (s->mouse_gate & 4096)) {
         state->wheel = s->wheel;
         state->horizontal_wheel = s->horizontal_wheel;
+        state->mouse_gate = s->mouse_gate;
+        state->pending_wheel = state->pending_horizontal_wheel = 0;
         state->initialized = 1;
     }
+    if (s->mouse_gate & 4096) return;
     uint32_t delta = s->wheel - state->wheel;
     state->wheel = s->wheel;
     // Linux mousedev/MiSTer's PS/2 wheel is positive downward; TIC-80's

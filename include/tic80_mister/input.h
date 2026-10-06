@@ -5,6 +5,7 @@
 typedef struct {
     uint32_t wheel;
     uint32_t horizontal_wheel;
+    uint32_t mouse_gate;
     int initialized;
     int64_t pending_wheel;
     int64_t pending_horizontal_wheel;
