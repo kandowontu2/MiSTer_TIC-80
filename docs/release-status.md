@@ -1,15 +1,39 @@
 # Release status
 
-Updated October 5, 2026 (installation sealed October 6 UTC). Matched build
-`18de1e89` is installed in the normal SD-card locations with Studio as the default.
-The current payload is Main `81253dc2`, RBF `fd673c65`, Studio `9123c34a`, player
+Updated October 6, 2026 UTC. The published
+[Frontier preview](https://github.com/kandowontu2/MiSTer_TIC-80/releases/tag/v0.1.0-dev.20261005)
+is now installed through its own script. The user confirmed the installation
+worked after the clean-install preparation. Independent read-only SSH checks
+verify all five installed payload hashes and unchanged official stock Main
+`9f6e5a23` (MiSTer_20260912). Games and saves were preserved during preparation.
+The check leaves PICO-8 selected throughout; it does not test TIC-80 gameplay.
+Evidence is in `build/user-install-readonly-20261005/result.json`.
+
+The preview omits a replacement Main. Its RBF is `fd673c65`, Studio `9123c34a`,
+player `dfe36c88`, handler `edbf962c` and CA bundle `a41b5d35`. Earlier extensive
+prototype qualification used patched Main and does not establish complete
+stock-Main startup, source-save or input behavior. Those runtime gates remain
+open; see [standard-Main compatibility](stock-main.md).
+
+The newer per-core HID horizontal-scroll implementation is a local development
+candidate. Optimized host ASan/UBSan and ARM/QEMU tests pass with stalled
+descriptor/feature probes still attached, while healthy devices continue.
+Both production frontends are rebuilt with unchanged, hash-bound SDK language
+libraries; target ABI, backend/input tests and helper dispatch pass. These
+changes have not replaced the published release or the installed binaries.
+
+## Historical prototype qualification
+
+Matched build `18de1e89` was previously installed in the normal SD-card
+locations with Studio as the default. That prototype used Main `81253dc2`,
+RBF `fd673c65`, Studio `9123c34a`, player
 `dfe36c88` and handler `edbf962c`. It supersedes the earlier Studio `609fcfae`
 installation. This is a qualified development package; broader release gates
 remain open.
 
 Following the user's concern about replacing the shared MiSTer executable,
 standard Main compatibility is the default release target. The installed
-prototype remains qualified only with its patched Main. A new digital transport
+prototype was qualified only with its patched Main. A new digital transport
 check passes eight standard native/PNG-index transfers using unmodified Main
 helpers, without extension metadata. This does not yet qualify a standard-Main
 hardware package. See `stock-main.md` for the remaining per-core integration work.

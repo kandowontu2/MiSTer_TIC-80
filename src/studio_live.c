@@ -2,6 +2,7 @@
 #include "tic80_mister/studio_session.h"
 #include "studio/studio.h"
 #include "tic80_mister/backend.h"
+#include "tic80_mister/hid_wheel.h"
 #include "tic80_mister/input.h"
 #include "tic80_mister/live_log.h"
 #include "tic80_mister/memory_map.h"
@@ -27,6 +28,7 @@ static int load(tm_studio_session *studio,const char *path) {
     return tm_studio_session_load_file(studio,path,5000)==TM_STUDIO_OK?0:-1;
 }
 int main(int argc,char **argv) {
+    if(argc>=2 && !strcmp(argv[1],"--hid-wheel-worker")) return tm_hid_wheel_worker(argc,argv);
     if(argc>=2 && !strcmp(argv[1],"--studio-worker")) return tm_studio_session_worker(argc,argv);
     const char *folder=NULL,*cart=NULL,*memory=NULL,*core_name=NULL,*saves=NULL;
     unsigned long limit=0,pulse=0; int run=0;

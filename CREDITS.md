@@ -68,3 +68,10 @@ demonstration and is not bundled with this installer.
 The optional experimental Main patches are documented for development in
 [stock-Main compatibility](docs/stock-main.md). The Frontier installer release
 does not distribute a replacement Main executable.
+
+The development HID input implementation references the Linux kernel
+community's [HIDraw documentation](https://www.kernel.org/doc/html/latest/hid/hidraw.html),
+originally documented by Alan Ott of Signal 11 Software, and the kernel HID
+maintainers' resolution-multiplier and USB/Bluetooth transport behavior.
+These are API/behavior references; kernel driver source is not bundled into
+the TIC-80 executable.

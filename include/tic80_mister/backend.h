@@ -31,7 +31,7 @@ typedef struct {
     uint64_t video_wait_started_ms;
     uint8_t *deferred_frame;
     int deferred_valid;
-    struct tm_linux_wheel *linux_wheel;
+    struct tm_hid_wheel *hid_wheel;
     int physical_input;
 } tm_backend;
 /* NULL selects /dev/mem on ARM. A regular file is allowed for transport tests.

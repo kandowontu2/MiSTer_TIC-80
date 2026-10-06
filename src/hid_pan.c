@@ -221,6 +221,16 @@ int tm_hid_pan_ready(const tm_hid_pan *s)
     }
     return 1;
 }
+int tm_hid_pan_feature_required(const tm_hid_pan *s, unsigned report)
+{
+    for (unsigned n = 0; n < s->multipliers; ++n) {
+        const tm_hid_pan_multiplier *m = &s->multiplier[n];
+        if (m->report != report) continue;
+        for (unsigned j = 0; j < s->count; ++j)
+            if (ancestor(s,m->collection,s->field[j].collection)) return 1;
+    }
+    return 0;
+}
 int tm_hid_pan_input(tm_hid_pan *s, const uint8_t *data, size_t size, int64_t *detents)
 {
     if (!detents) return -1;

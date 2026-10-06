@@ -35,6 +35,7 @@ static int opened, closed;
 int __real_openat(int,const char *,int,...);
 int __real_close(int);
 ssize_t __real_read(int,void *,size_t);
+ssize_t __wrap_read(int,void *,size_t);
 int __real_fstat(int,struct stat *);
 int __real_fstatat(int,const char *,struct stat *,int);
 static int number(const char *name) { return strlen(name)==6 && !strncmp(name,"event",5) && name[5]>='0' && name[5]<='3' ? name[5]-'0' : -1; }
@@ -63,6 +64,42 @@ int __wrap_fstatat(int fd,const char *name,struct stat *s,int flags)
     int result=__real_fstatat(fd,name,s,flags);
     if(!result && number(name)>=0) { s->st_mode=S_IFCHR|0600;s->st_ctim=(struct timespec){0}; }
     return result;
+}
+#if defined(_FILE_OFFSET_BITS) && _FILE_OFFSET_BITS == 64
+int __real___fxstat64(int,int,struct stat *);
+int __real___fxstatat64(int,int,const char *,struct stat *,int);
+int __wrap___fxstat64(int version,int fd,struct stat *s)
+{
+    int result=__real___fxstat64(version,fd,s);
+    if(!result && fd>=0 && fd<1024 && clients[fd].source) {s->st_mode=S_IFCHR|0600;s->st_ctim=(struct timespec){0};}
+    return result;
+}
+int __wrap___fxstatat64(int version,int fd,const char *name,struct stat *s,int flags)
+{
+    int result=__real___fxstatat64(version,fd,name,s,flags);
+    if(!result && number(name)>=0) {s->st_mode=S_IFCHR|0600;s->st_ctim=(struct timespec){0};}
+    return result;
+}
+#else
+int __real___fxstat(int,int,struct stat *);
+int __real___fxstatat(int,int,const char *,struct stat *,int);
+int __wrap___fxstat(int version,int fd,struct stat *s)
+{
+    int result=__real___fxstat(version,fd,s);
+    if(!result && fd>=0 && fd<1024 && clients[fd].source) {s->st_mode=S_IFCHR|0600;s->st_ctim=(struct timespec){0};}
+    return result;
+}
+int __wrap___fxstatat(int version,int fd,const char *name,struct stat *s,int flags)
+{
+    int result=__real___fxstatat(version,fd,name,s,flags);
+    if(!result && number(name)>=0) {s->st_mode=S_IFCHR|0600;s->st_ctim=(struct timespec){0};}
+    return result;
+}
+#endif
+ssize_t __wrap___read_chk(int fd,void *data,size_t size,size_t capacity)
+{
+    assert(size<=capacity);
+    return __wrap_read(fd,data,size);
 }
 int __wrap_ioctl(int fd,unsigned long request,...)
 {

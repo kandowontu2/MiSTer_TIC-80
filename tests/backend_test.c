@@ -185,7 +185,7 @@ int main(void)
     REG(m,TM_GEOMETRY_OFFSET+4)=TM_LINUX_INPUT_MAGIC;
     REG(m,TM_MOUSE_OFFSET)=0x800d4178;
     assert(tm_backend_inputs(&b,&inputs)==1 && inputs.mouse_gate==12289);
-    assert(!b.linux_wheel); // modeled DDR cannot open physical input devices
+    assert(!b.hid_wheel); // modeled DDR cannot open physical input devices
     REG(m,TM_GEOMETRY_OFFSET+4)=TM_INPUT_EXTENSION_MAGIC;
     REG(m,TM_MOUSE_OFFSET)=0x00054178;
     assert(tm_backend_inputs(&b,&inputs)==1 && !inputs.mouse_gate);

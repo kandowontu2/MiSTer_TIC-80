@@ -83,7 +83,9 @@ The matched development prototype passed both frontends' ten-minute stereo
 music/save/memory checks, fourteen languages across three cartridge formats,
 and physical Xbox, mouse and Bluetooth-keyboard diagnostics. Standard HDMI
 720p/60 was confirmed on the test TV. The installer has thirteen local
-installer/package checks and a read-only bundle check on the MiSTer.
+installer/package checks and a read-only bundle check on the MiSTer. A user-run
+clean installation is confirmed, with all five installed release payload hashes
+verified and the shared stock MiSTer executable preserved.
 
 Pending work includes complete stock-Main startup/reset/source-save behavior
 and a per-core horizontal-wheel replacement, broader Studio/cart/API coverage,

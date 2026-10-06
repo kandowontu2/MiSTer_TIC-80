@@ -1,6 +1,7 @@
 #define _POSIX_C_SOURCE 200809L
 #include "tic80.h"
 #include "tic80_mister/backend.h"
+#include "tic80_mister/hid_wheel.h"
 #include "tic80_mister/cart.h"
 #include "tic80_mister/cart_file.h"
 #include "tic80_mister/video.h"
@@ -25,6 +26,7 @@ static u64 clock_ns(void *data)
 int tm_serve(int argc, char **argv);
 int main(int argc, char **argv)
 {
+    if (argc >= 2 && !strcmp(argv[1], "--hid-wheel-worker")) return tm_hid_wheel_worker(argc, argv);
     if (argc >= 2 && !strcmp(argv[1], "--vm-worker")) return tm_vm_worker(argc, argv);
     if (argc >= 2 && !strcmp(argv[1], "--serve")) return tm_serve(argc, argv);
     if (argc < 2 || argc > 4) {

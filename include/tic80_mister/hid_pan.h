@@ -28,10 +28,12 @@ typedef struct {
 /* 1 = relative Consumer AC Pan found, 0 = no pan, -1 = malformed/unsupported
  * descriptor. Failure clears all output state. No device I/O occurs here. */
 int tm_hid_pan_parse(tm_hid_pan *, const uint8_t *, size_t);
-/* Feature payload excludes the hidraw API's leading report-ID byte. Read
- * current device values; never change a device's multiplier to suit TIC-80. */
+/* Feature payload contains field bytes only. The transport handles any report
+ * ID prefix. Read current values; never change a device's multiplier. */
 int tm_hid_pan_feature(tm_hid_pan *, unsigned report, const uint8_t *, size_t);
 int tm_hid_pan_ready(const tm_hid_pan *);
+/* Whether any pan field depends on this feature report. */
+int tm_hid_pan_feature_required(const tm_hid_pan *, unsigned report);
 /* Input payload includes an ID only when the descriptor declares numbered
  * reports. Return 1 for decoded pan, 0 for an unrelated report, -1 for a short
  * or invalid report. Failure discards partial detents; output is always set. */

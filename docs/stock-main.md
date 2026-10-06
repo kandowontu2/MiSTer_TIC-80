@@ -51,8 +51,8 @@ generated transport sources are retained. No MiSTer hardware is accessed.
 Before qualifying the standard-Main preview as a finished release, verify both frontends on an
 unmodified supported Main, including actual cartridge loading/switching,
 Studio source/save behavior, startup/MGL/reset/reload, all requested controls,
-audio and HDMI. Then make the default manifest omit Main and make its installer
-preserve the shared executable. Keep any optional experimental Main extension
+audio and HDMI. The published manifest already omits Main, and its installer
+preserves the shared executable. Keep any optional experimental Main extension
 separate from that package. Do not strip Main from the existing frozen ZIP and
 reuse its qualification as proof of a different installation.
 
@@ -126,17 +126,69 @@ Evidence is `build/hid-pan-local-v2-20261005/result.json`.
 The separate Release-mode CMake/CTest run also passes both the HID decoder and
 evdev reader tests (`build/wheel-host-cmake-20261005/result.json`).
 
-The decoder is not yet connected to native HIDraw discovery or the frontends.
-Device GET feature requests can block; that I/O must be isolated from audio
-publication. Hotplug, OSD queue draining, bounded worker failure/recovery and
-actual report delivery while stock Main owns evdev still need verification.
-The proposed evdev path must not be treated as functional stock-Main horizontal
-scrolling before that work is complete.
+The development frontends now dispatch `--hid-wheel-worker` before normal
+initialization. Their backend uses that private process for HIDraw discovery
+and report decoding instead of the direct evdev reader. Descriptor and GET
+feature queries run in separate per-device children with a 1.5-second deadline.
+A stalled request does not stop other devices or the reader heartbeat; its
+configuration remains disabled until the device node is replaced. Killed probe
+slots remain reserved until their specific child is reaped, bounding pending
+helpers even when a kernel request has not returned. Probe children close other
+inherited descriptors and receive SIGKILL when their reader parent dies.
+The frontend exchanges nonblocking sequenced messages with the worker; a
+generation change discards old responses and drains raw queues at OSD edges.
+Cumulative counters preserve queued totals during socket backpressure. Worker
+crashes or a three-second heartbeat timeout trigger private-helper retirement
+and a delayed retry without waiting in the audio publication loop. Specific
+children are reaped; unrelated processes are never killed or waited on.
+
+Local tests exercise real spawn/exec, socket messaging and directory/file
+lifecycle with substituted HID ioctls and raw kernel queues. They cover signed
+and fractional motion, node replacement, truncation, stale OSD responses,
+bursts, worker death, stuck descriptor/feature probes and cleanup. Optimized
+host ASan/UBSan and SDK ARM/QEMU checks pass, including healthy-device motion,
+new discovery and node replacement with stalled devices still attached.
+The reader heartbeat continues past the frontend watchdog interval, and the
+timed-out probe children are reaped. Separate reader suspension still exercises
+the frontend watchdog. Current-source evidence is in
+`build/hid-probes-current-v9-20261005/result.json`; the preceding CMake run is
+`build/hid-wheel-probes-v8-20261005/result.json`. Those simulations
+do not prove that native device reports remain available while stock Main
+owns evdev. The revised worker additionally handles unnumbered feature GET
+responses with or without a zero report-ID prefix: Linux USB and Bluetooth
+HIDP return different layouts. This follows their pinned
+[USB HID](https://github.com/torvalds/linux/blob/v6.18/drivers/hid/usbhid/hid-core.c)
+and [Bluetooth HIDP](https://github.com/torvalds/linux/blob/v6.18/net/bluetooth/hidp/core.c)
+implementations; it still needs native device qualification.
+
+Native hotplug, Bluetooth reconnect, real kernel queue saturation, feature
+query failures and latency during audio publication remain open. The first
+worker required removing a stalled node before recovery. The per-device probe
+isolation and current regression replace that limitation; actual kernel/device
+behavior still requires native qualification.
 
 The first fresh SDK compile exited 2 because its build-time Forth bootstrap
 was dynamically linked and QEMU could not find the target loader. Its original
 failed coordinator/result remain in `build/linux-wheel-sdk-v2-20261005`.
 The helper now links statically; a separate target dictionary generation passes
-and its ELF has no interpreter segment. A corrected full build uses the fresh
-frozen snapshot in `build/linux-wheel-sdk-v3-20261005`; its result must be checked
-separately. None of these local checks establishes full stock-Main qualification.
+and its ELF has no interpreter segment. The corrected full SDK build in
+`build/linux-wheel-sdk-v3-20261005` compiles both frontends and all language
+libraries, but its optimized evdev fixture fails; that original failure is
+preserved. Current fixture corrections pass separately under host and ARM/QEMU.
+Both actual frontends are subsequently rebuilt with the current HID integration
+in `build/hid-frontends-v1-20261005`. This component build reuses unchanged,
+hash-bound language libraries; it verifies the target backend/input ABI before
+linking, passes backend/input/frontend tests and checks both helper entry points.
+It does not represent a fresh rebuild of the unchanged language libraries.
+None of these local checks establishes full stock-Main qualification.
+
+The user confirmed the published installer works after the clean-install
+preparation on October 5. Preparation restored official stock Main, removed
+and backed up the TIC-80 cores and per-core mappings, and preserved the games
+tree and saves. The staged installer and bundle matched the published release.
+A separate read-only SSH check verifies all five installed payloads against
+that release and confirms the shared stock Main hash is unchanged. The selected
+core remains PICO-8 throughout the check. Evidence is in
+`build/user-install-readonly-20261005/result.json`. Installation success does
+not close the remaining runtime gates. The newer HID worker remains a local
+development candidate and has not been deployed by these checks.
