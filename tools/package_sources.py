@@ -2,6 +2,7 @@
 import argparse
 import hashlib
 import json
+import os
 from pathlib import Path
 import subprocess
 import zipfile
@@ -19,6 +20,8 @@ def main():
     p.add_argument("--fpga-project", type=Path, required=True)
     a = p.parse_args()
     assert not a.output.exists(), "Use a fresh output path"
+    integration_commit = git(ROOT, "rev-parse", "HEAD").decode().strip()
+    assert not git(ROOT, "status", "--porcelain").strip(), "Commit source changes before packaging"
     runtime = ROOT / "reference/tic80"
     runtime_pin = "4dba5bc2640d9cde650fb0b427c9be6aab598de9"
     assert git(runtime, "rev-parse", "HEAD").decode().strip() == runtime_pin
@@ -39,11 +42,14 @@ def main():
     extensions = {".v", ".sv", ".vhd", ".vhdl", ".svh", ".vh", ".tcl", ".qip",
                   ".qpf", ".qsf", ".sdc", ".mif", ".hex", ".inc", ".f", ".bsf", ".qsys", ".ip"}
     excluded = {"db", "incremental_db", "output_files", "simulation", "tmp", ".git"}
-    for source in a.fpga_project.rglob("*"):
-        rel = source.relative_to(a.fpga_project)
-        if source.is_file() and not excluded.intersection(rel.parts) and (source.suffix.lower() in extensions or source.name == "LICENSE"):
-            entries["fpga-project/" + rel.as_posix()] = source
-    manifest = {"integration_commit": git(ROOT, "rev-parse", "HEAD").decode().strip(),
+    for directory, subdirs, filenames in os.walk(a.fpga_project):
+        subdirs[:] = [name for name in subdirs if name not in excluded]
+        for filename in filenames:
+            source = Path(directory) / filename
+            rel = source.relative_to(a.fpga_project)
+            if source.suffix.lower() in extensions or source.name == "LICENSE":
+                entries["fpga-project/" + rel.as_posix()] = source
+    manifest = {"integration_commit": integration_commit,
                 "runtime_commit": runtime_pin, "runtime_submodules": git(runtime, "submodule", "status", "--recursive").decode().splitlines(),
                 "platform_commit": "72cb0405417d506c33e59ab51c1a374fc4db649e",
                 "Frontier_commit": "a7c61e0a000d9dfd40235e638229e06a603534d5",
@@ -59,6 +65,7 @@ def main():
         assert z.testzip() is None
         for name, expected in manifest["files"].items():
             assert hashlib.sha256(z.read(name)).hexdigest() == expected, name
+    assert git(ROOT, "rev-parse", "HEAD").decode().strip() == integration_commit, "Source revision changed during packaging"
     print(json.dumps({"source_archive": str(a.output.resolve()), "files": len(entries),
                       "sha256": hashlib.sha256(a.output.read_bytes()).hexdigest()}))
 
