@@ -623,3 +623,55 @@ This check does not qualify delayed-MGL switching on the FPGA. The stronger
 native lifecycle gate, current physical controls, exact-candidate human output
 confirmation and the broader validation gates remain open. The published
 preview and installed frontends remain unchanged.
+
+
+## Launch-context recovery and stronger native gate (October 6)
+
+The first stronger native run passes the player cold start, four raw reloads
+and all three delayed native/PNG replacements with retained BOOT counters
+5 to 5, 1 to 1 and 1 to 1. Studio passes cold start and its first raw reload,
+then stays paused after its next lookup returns `launch_context=-1`. That
+original run fails and is preserved in `build/mgl-native-lifecycle-v1-20261006`,
+with a partial-scope independent review; it is not a passing combined gate.
+The exact initial lookup failure reason was not recorded. All original jobs
+terminate and the installed Studio is restored without changing protected
+payloads.
+
+Both frontends now re-observe unavailable launch context every 100 ms while
+keeping the retained cartridge paused. A coherent raw launch permits one
+restart; a coherent first-cartridge MGL keeps waiting for its actual transfer.
+Elapsed time never permits cached BOOT. Persistent unknown context still
+supports explicit reset, a new transfer, SIGTERM and core departure. Future
+native failures capture matching Main processes, their arguments and the
+original frontend log before cleanup changes the selected core.
+
+The exact SDK/default binaries are player
+`2a03b8491dcaa3d85e87e18c60756caefe94e97f16179c6ecf36870135e994c2` and Studio
+`e36136383e5cadc441cc8085ac638fbf70948500a8633e266ac267a5fa0ec64b`, built in
+`build/mgl-frontends-v4-20261006`. All 43 registered ARM/QEMU frontend/reload/
+output tests pass. Both prior binaries reproduce the unresolved-context
+regression; the new cases verify unknown-to-raw and unknown-to-MGL recovery.
+Receipts are `build/mgl-context-local-v1-20261006` and
+`build/mgl-context-negative-v1-20261006`.
+
+The new full native run passes for both exact binaries: cold start, four raw
+RBF reloads each, three delayed native/modern-PNG/legacy-PNG replacements each,
+and active audio after all 16 cartridge actions. Every monitor has zero
+underruns. The retained BOOT counters remain 5 to 5, 1 to 1 and 1 to 1 in both
+frontends; new cartridges each BOOT once. Studio also passes private working-
+copy Save and console-load/editor Save. Its logs directly show unknown launch
+context resolving to raw launch during reload and to MGL during replacement,
+without resuming the old cartridge prematurely. All 20 original jobs terminate
+with exit 0. Evidence and independent review are
+`build/mgl-native-lifecycle-v2-20261006` and
+`build/mgl-native-lifecycle-review-v2-20261006`.
+
+Before switching, a read-only ABI-bound inspector verifies the installed
+Studio has no unsaved changes or pending selection. The owner journal checks
+that again immediately before the normal MENU transition. Installed files,
+Main, original cartridge metadata, source caches and Frontier are preserved;
+the owner restores the installed TIC-80 Studio afterward. Evidence is
+`build/mgl-native-lifecycle-owner-v3-20261006`. The first owner attempt's
+empty-core-name guard failure occurs before candidate launch and is preserved
+separately. This passing gate does not replace the remaining exact-binary
+music/resource, physical-input, human HDMI/stereo or broader release gates.

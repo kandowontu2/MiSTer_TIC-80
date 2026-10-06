@@ -68,6 +68,18 @@ new binaries is still pending; no installed payload or release was replaced.
 SXMLC attribution, original license and pinned provenance are included. See
 [standard-Main compatibility](stock-main.md) for the exact receipts and scope.
 
+A subsequent native Studio raw reload exposes an unresolved launch-context
+wait in that first fix. Both frontends now re-observe unknown context while
+remaining paused. All 43 local regressions pass, and exact player `2a03b849`
+and Studio `e3613638` pass the stronger full native gate: four raw reloads each,
+all three delayed cart formats without retained BOOT, active audio, and both
+Studio working-copy/source Save workflows. Native logs also capture unknown
+context recovering to both raw and MGL launches. All 20 original jobs exit 0;
+independent review and normal installed-Studio restoration pass. The failed
+original run remains preserved. These binaries remain private; exact-binary
+music/resource, physical controls, human output confirmation and broader
+release qualification still remain. See [standard-Main compatibility](stock-main.md).
+
 ## Historical prototype qualification
 
 Matched build `18de1e89` was previously installed in the normal SD-card
