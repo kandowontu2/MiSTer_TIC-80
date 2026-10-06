@@ -1,7 +1,7 @@
 """Own one physical-input test window and restore the installed Studio.
 
-Requires a fresh, clean inspect_studio_native receipt and connected gamepad
-and mouse. The underlying diagnostic never sends synthetic input.
+Requires a fresh, clean inspect_studio_native receipt and connected devices
+for the selected check. The underlying diagnostic never sends synthetic input.
 """
 import argparse
 import hashlib
@@ -26,6 +26,7 @@ def main():
         p.add_argument('--' + name, type=Path, required=True)
     p.add_argument('--host', default='192.168.1.176')
     p.add_argument('--seconds', type=int, default=600)
+    p.add_argument('--kind', choices=('controller-mouse', 'keyboard'), default='controller-mouse')
     a = p.parse_args()
     assert 10 <= a.seconds <= 3600
     assert not a.native_evidence.exists()
@@ -50,9 +51,12 @@ def main():
         devices = test.run('cat /proc/bus/input/devices')
         r['physical_input_inventory'] = devices; test.save()
         # Main's virtual keyboard must never satisfy this readiness gate.
-        blocks = [block for block in devices.split('\n\n') if '/devices/virtual/' not in block]
-        assert any('Handlers=' in b and 'js' in b.split('Handlers=', 1)[1].split('\n', 1)[0] for b in blocks), 'Connect the physical gamepad'
-        assert any('Handlers=' in b and 'mouse' in b.split('Handlers=', 1)[1].split('\n', 1)[0] for b in blocks), 'Connect the physical mouse'
+        blocks = [block for block in devices.split('\n\n') if 'Name="MiSTer virtual input"' not in block]
+        if a.kind == 'keyboard':
+            assert any('Handlers=' in b and 'kbd' in b.split('Handlers=', 1)[1].split('\n', 1)[0] for b in blocks), 'Connect or wake the physical keyboard'
+        else:
+            assert any('Handlers=' in b and 'js' in b.split('Handlers=', 1)[1].split('\n', 1)[0] for b in blocks), 'Connect the physical gamepad'
+            assert any('Handlers=' in b and 'mouse' in b.split('Handlers=', 1)[1].split('\n', 1)[0] for b in blocks), 'Connect the physical mouse'
         parent = [pid for pid in before['frontend_identities'] if '--studio-worker' not in test.argv(pid)]
         assert len(parent) == 1
         for pid, identity in before['frontend_identities'].items():
@@ -67,19 +71,20 @@ def main():
             guard += 'test "$(sed "s/.*) //" /proc/' + pid + '/stat | awk \'{print $20}\')" = ' + identity['birth'] + ' && '
         guard += 'case "$(' + reader + ' ' + ipc[0] + ')" in *"mode=1 home=1 modified=0 selecting=0"*) ;; *) exit 44;; esac\n'
         guard += "printf %s 'load_core /media/fat/menu.rbf\n' > /dev/MiSTer_cmd"
-        r.update(scope=__doc__, before=before['before'],
+        r.update(scope=__doc__, physical_kind=a.kind, before=before['before'],
                  source_guard_receipt_sha256=hashlib.sha256(a.inspect_receipt.read_bytes()).hexdigest(),
                  input_injected=False)
         test.save()
         changed = True
-        job = before['remote'] + '/original-physical-clean-Studio-to-MENU'
+        job = before['remote'] + '/original-physical-' + a.kind + '-clean-Studio-to-MENU'
         test.job(job, guard); assert test.collect(job, 10) == 0
         test.wait_core('MENU', ('', 'TIC-80', 'MENU'))
         cmd = [sys.executable, str(ROOT / 'tools/test_hid_frontends_native.py'),
                '--candidate', str(a.candidate), '--probe-build', str(a.probe_build),
                '--reader-evidence', str(a.reader_evidence), '--evidence', str(a.native_evidence),
                '--initial-core', 'MENU', '--host', a.host, '--music-fixtures', str(a.fixture),
-               '--frontends', 'player', '--physical-input', '--soak-seconds', str(a.seconds)]
+               '--frontends', 'player', '--physical-keyboard' if a.kind == 'keyboard' else '--physical-input',
+               '--soak-seconds', str(a.seconds)]
         with (a.evidence / 'original-driver.log').open('x', encoding='utf-8') as log:
             child = subprocess.Popen(cmd, stdout=log, stderr=subprocess.STDOUT)
             r.update(original_driver_pid=child.pid, original_driver_command=cmd); test.save()

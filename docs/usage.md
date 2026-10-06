@@ -10,8 +10,9 @@ qualified with unmodified MiSTer Main; see [release status](release-status.md).
 Place `.tic` cartridges and TIC-80 cartridge PNGs in
 `/media/fat/games/TIC-80/Carts/`. Load a cartridge through the MiSTer OSD's
 **Load Cart** entry, or Studio's own browser/console. Ordinary image PNGs are
-not TIC-80 cartridges. Native, modern-PNG and legacy-PNG language demos have
-been tested in the matched prototype.
+not TIC-80 cartridges. The current player and Studio pass native, modern-PNG
+and legacy-PNG demo loads for all fourteen included languages through stock
+MiSTer Main.
 
 Use Studio's console `help` for its commands; `load <filename>` loads a project
 and `run` starts it. Studio prompts when an OSD selection would discard unsaved
@@ -44,9 +45,10 @@ Use MiSTer's core remapper to change bindings, including Q/E on LT/RT.
 The remapper names the individual Z/X/A/S, W/A/S/D, Enter, Esc and Q/E actions.
 Keyboard and mouse input are supported by the frontend; pair a Bluetooth
 keyboard through your MiSTer Bluetooth setup before using it. Physical Xbox,
-keyboard and mouse diagnostics passed on the development board. Mouse movement,
-three buttons and vertical wheel were checked. The horizontal-wheel extension
-in the matched prototype still needs a per-core stock-Main replacement.
+keyboard and mouse diagnostics passed on earlier prototype builds; physical
+acceptance of the current release remains open. Horizontal-wheel input is
+included without replacing Main. Physical horizontal-wheel hardware has not
+yet been verified.
 
 ## Choose Studio or player
 

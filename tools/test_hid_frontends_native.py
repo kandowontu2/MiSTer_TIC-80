@@ -275,15 +275,19 @@ def main():
                         help='Private stock-Main malformed/hung cartridge and verified worker-death recovery')
     parser.add_argument('--physical-input', action='store_true',
                         help='Observe human Xbox/mouse controls in a private player diagnostic; no injection')
+    parser.add_argument('--physical-keyboard', action='store_true',
+                        help='Observe the separate human 22-key/modifier/repeat diagnostic; no injection')
     args = parser.parse_args()
     assert 10 <= args.soak_seconds <= 3600
     assert 1 <= args.lifecycle_reloads <= 16
     assert not args.lifecycle_only or (args.music_fixtures and args.keyboard_build)
     assert not args.cartridge_matrix or (args.music_fixtures and args.cart_snapshot_build and not args.lifecycle_only)
     assert not args.recovery_only or (args.music_fixtures and args.keyboard_build and not args.lifecycle_only and not args.cartridge_matrix)
-    assert not args.physical_input or (args.music_fixtures and args.frontends == ['player'] and args.cycles == 1
+    assert not (args.physical_input and args.physical_keyboard)
+    physical = args.physical_input or args.physical_keyboard
+    assert not physical or (args.music_fixtures and args.frontends == ['player'] and args.cycles == 1
                                       and not args.lifecycle_only and not args.cartridge_matrix and not args.recovery_only)
-    gate_name = 'physical_gate_passed' if args.physical_input else 'recovery_gate_passed' if args.recovery_only else 'matrix_gate_passed' if args.cartridge_matrix else 'lifecycle_gate_passed' if args.lifecycle_only else 'music_gate_passed' if args.music_fixtures else 'api_gate_passed'
+    gate_name = 'physical_gate_passed' if physical else 'recovery_gate_passed' if args.recovery_only else 'matrix_gate_passed' if args.cartridge_matrix else 'lifecycle_gate_passed' if args.lifecycle_only else 'music_gate_passed' if args.music_fixtures else 'api_gate_passed'
     sequence = schedule(args.frontends, args.cycles)
     args.evidence.mkdir()
     (args.evidence / 'original-driver.py').write_bytes(Path(__file__).read_bytes())
@@ -351,8 +355,9 @@ def main():
         r['source_sha256']['tools/native_frontend_recovery.py'] = sha(ROOT / 'tools/native_frontend_recovery.py')
         r['source_sha256']['tools/native_frontend_lifecycle.py'] = sha(ROOT / 'tools/native_frontend_lifecycle.py')
         r['keyboard_probe'] = keyboard
-    if args.physical_input:
-        r['scope'] = 'Human Xbox mappings and mouse axes/buttons/wheel through the current player; no injected input'
+    if physical:
+        r['scope'] = ('Human physical keyboard 22 keys, modifiers, held-W repeat and releases through the current player'
+                      if args.physical_keyboard else 'Human Xbox mappings and mouse axes/buttons/wheel through the current player; no injected input')
         r['input_injected'] = False
         r['source_sha256']['tools/native_physical_input.py'] = sha(ROOT / 'tools/native_physical_input.py')
     r['diagnostic_reset_trace'] = bool(manifest.get('diagnostic_reset_trace'))
@@ -480,7 +485,7 @@ def main():
             clock = test.run('for n in 1 2; do for r in ' + registers + '; do printf "%s " "$r"; i2cget -y 1 0x39 "$r" b || exit 32; done; sleep .25; done').splitlines()
             assert len(clock) == 26
             r['cycles'][-1]['hdmi'] = analyze([{'registers': dict(line.split() for line in clock[n:n+13])} for n in (0, 13)])
-            active_probe = None if args.lifecycle_only or args.cartridge_matrix or args.recovery_only or args.physical_input else remote + '/' + label + ('-monitor' if music else '-probe')
+            active_probe = None if args.lifecycle_only or args.cartridge_matrix or args.recovery_only or physical else remote + '/' + label + ('-monitor' if music else '-probe')
             active_frontend = remote + '/' + label + '-frontend'
             ready = active_probe + '.ready' if active_probe else None
             pid_path = active_frontend + '.pid'
@@ -510,7 +515,7 @@ def main():
             r['cycles'][-1]['frontend_identity'] = frontend_identity
             r['cycles'][-1]['frontend_pid'] = current_frontend; test.save()
             if music:
-                if args.physical_input:
+                if physical:
                     from native_physical_input import run_physical
                     r['cycles'][-1]['physical_summary'] = run_physical(
                         test, args, save_path, frontend_identity, current_pid, current_mgl, frontend)

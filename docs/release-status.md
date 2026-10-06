@@ -65,6 +65,16 @@ preparation, not a physical-input pass. The recorder and process classifier
 pass six offline rejection/acceptance tests, alongside fourteen existing
 frontend-oracle checks.
 
+Both physical fixtures are now prepared for one
+[consolidated acceptance session](final-acceptance.md), following the user's
+preference to finish independent work first. The separate keyboard recorder
+requires all 22 presses and releases, three modifier chords and held-W repeat;
+controller-only counters cannot satisfy it. Six physical-oracle tests and the
+fourteen existing frontend-oracle checks pass. Fresh fixture hashes are in
+`build/final-physical-session-preparation-v4-20261006/result.json`. This is
+preparation only: no physical event, confirmation or Studio editing workflow
+is credited, and no production payload changes.
+
 ## Earlier preview and candidate validation record
 
 Updated October 6, 2026 UTC. The published
