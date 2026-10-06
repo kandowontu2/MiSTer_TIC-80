@@ -97,3 +97,10 @@ python3 tests/installer_package_test.py
 existing checksum-verified candidate package; it never includes Main. Packaging
 is not runtime qualification. For reproducible releases retain the source
 revision, candidate payload hashes, toolchain profile and qualification status.
+
+`tools/package_sources.py` defaults to the first preview's RBF. For a newer
+per-core candidate, pass `--candidate-manifest` with the manifest produced by
+`tools/prepare_hid_native_candidate.py`, together with `--fpga-project` and a
+fresh `--output` ZIP path. It verifies all five staged payloads and the fitted
+RBF, and records their identities in the source archive. This binds the archive
+to a candidate without claiming runtime qualification or including Main.
