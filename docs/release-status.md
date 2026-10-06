@@ -48,6 +48,16 @@ Human picture/stereo confirmation of this exact player is still pending. See [st
 hashes, test scope and original failures. Historical prototype confirmations
 below do not count as human confirmation of this candidate.
 
+The current exact frontends also pass a native 84-case production-worker
+matrix with all 168 RGBA frames and 5,040 PCM tick buffers matching frozen
+references. This leaves installed Studio running and never maps DDR.
+A subsequent audit finds that both retained cartridges execute an extra BOOT
+before a delayed stock-Main MGL replacement arrives. The earlier lifecycle
+pass did not check that invariant. Its saved counters reproduce the defect,
+and the driver now rejects it. Startup synchronization therefore remains a
+known runtime defect requiring a per-core fix; full qualification is false.
+See `stock-main.md` for receipts and the corrected verification scope.
+
 ## Historical prototype qualification
 
 Matched build `18de1e89` was previously installed in the normal SD-card

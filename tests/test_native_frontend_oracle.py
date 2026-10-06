@@ -15,7 +15,7 @@ except ModuleNotFoundError as error:
         raise AssertionError('An offline test attempted a real SSH connection')
     sys.modules['paramiko'] = types.SimpleNamespace(SSHClient=no_network, SSHException=ConnectionError)
 from test_hid_frontends_native import PrivateTest, STAGES, idle_child, validate_rows, cartridge, schedule
-from native_frontend_lifecycle import code, switch_payload
+from native_frontend_lifecycle import code, switch_payload, validate_retained_boot
 
 
 def receipt():
@@ -31,6 +31,12 @@ def receipt():
 
 
 class NativeOracle(unittest.TestCase):
+    def test_replacement_must_not_boot_the_retained_cartridge(self):
+        validate_retained_boot(5, 5)
+        for observed in (4, 6, 0):
+            with self.assertRaisesRegex(AssertionError, 'Retained cartridge executed BOOT'):
+                validate_retained_boot(5, observed)
+
     def test_switch_cannot_accept_retained_cartridge_boot(self):
         original = cartridge('music-private-' + 'a'*32)
         identities = []

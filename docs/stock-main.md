@@ -545,3 +545,42 @@ Both original jobs exit zero. The independent read-only review verifies
 samples, resources, saves, frozen sources and protected restoration state
 (`build/private-music-native-review-v2-20261006`). The optional human
 picture/stereo confirmation for this exact player is still pending.
+
+## Current production-worker matrix and startup audit
+
+The exact current player `930e7531` and Studio `baf2b1fc` also pass the
+native production-worker matrix (`build/native-runtime-matrix-board-v2-20261006`).
+Fresh ARM helpers execute 84 distinct workers: both frontends, all fourteen
+script runtimes and native/modern/legacy cartridge formats. Every one of the
+168 complete RGBA reference frames and 5,040 PCM tick buffers matches the
+independent frozen references. A separate read-only review checks original
+terminal journals, all 84 distinct worker PIDs, payload hashes and retention
+of the installed Studio and stock Main
+(`build/native-runtime-matrix-board-review-v2-20261006`). The suite does not
+map DDR or change core selection, installed files or physical input. It covers
+the frozen demo programs, not every cartridge or API.
+
+The original preparation loses SSH after its first helper unpack and remains
+failed (`build/native-runtime-matrix-board-v1-20261006`). Read-only reconciliation
+finds that unpack complete, with the exact hash and executable permissions.
+It also observes Wi-Fi reassociation in the kernel log. The successful second
+coordinator adopts that verified file without repeating the unpack, journals
+all remaining preparation jobs and starts the matrix exactly once.
+
+A requirement audit then finds a real startup defect, distinct from transport
+recovery: the retained cartridge runs an extra BOOT before stock Main's delayed
+MGL replacement arrives. The original lifecycle v7 pass verified that the new
+cartridge eventually runs, but did not reject this intervening BOOT. Read-only
+inspection of its CRC-valid saved state confirms both frontends' original
+cartridge has BOOT=6 after the four raw reloads should leave it at 5. Their
+intermediate native and modern PNG cartridges each have BOOT=2 instead of 1;
+the final legacy cartridge remains at 1
+(`build/mgl-retained-boot-audit-v1-20261006`). Thus that passing run does not
+qualify the original no-premature-cached-execution requirement.
+
+The lifecycle driver now compares the retained cartridge's BOOT counter before
+and after each replacement, in addition to verifying the new cartridge's own
+BOOT. Its offline negative controls reject increments, decrements and resets.
+Both current default runtime binaries still exhibit the startup defect; a
+per-core synchronization fix is required before release qualification. The
+shared Main and installed preview remain unchanged.

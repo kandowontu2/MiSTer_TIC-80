@@ -48,6 +48,10 @@ def switch_payload(cart, kind):
     return native, (modern if kind == 'modern' else legacy)(native), 'png', saveid.decode()
 
 
+def validate_retained_boot(before, after):
+    assert after == before, ('Retained cartridge executed BOOT during delayed MGL replacement', before, after)
+
+
 def run_lifecycle(test, args, stage, remote, label, cart, save_path, identity, frontend, update):
     rows = []
     original_cart = cart
@@ -105,6 +109,8 @@ def run_lifecycle(test, args, stage, remote, label, cart, save_path, identity, f
         test.load(path,'TIC-80'); boots += 1
         last = observe('reload-' + str(ordinal),boots,path,len(cart))
     for kind in ('native', 'modern', 'legacy'):
+        previous_save_path = save_path
+        retained_boots = pmem(test, previous_save_path)[2]
         cart, data, extension, saveid = switch_payload(original_cart, kind)
         save_path = remote + '/saves/' + hashlib.md5(saveid.encode()).hexdigest() + '.pmem'
         path = remote + '/' + label + '-switch-' + kind
@@ -117,6 +123,10 @@ def run_lifecycle(test, args, stage, remote, label, cart, save_path, identity, f
             with sftp.open(path + '.mgl','wb') as stream: stream.write(mgl.encode())
         update(path + '.mgl'); test.load(path + '.mgl','TIC-80')
         last = observe('switch-' + kind,1,path + '.mgl',len(data))
+        after = pmem(test, previous_save_path)[2]
+        last.update(retained_boots_before=retained_boots, retained_boots_after=after)
+        test.save()
+        validate_retained_boot(retained_boots, after)
     if frontend == 'studio':
         # Stock Main supplied no source path. All edits and Ctrl+S writes stay
         # inside this test's private Studio directory.
