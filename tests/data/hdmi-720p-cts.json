@@ -1,0 +1,382 @@
+{
+  "verified_before": {
+    "framebuffer": "8888 1 1280 720 5120",
+    "rbf_sha256": "645633d2cebc566c61848939dfbbd2ee5705af365d0ad086e6eeb233800e611c",
+    "rows": [
+      {
+        "registers": {
+          "0x01": "0x00",
+          "0x02": "0x18",
+          "0x03": "0x00",
+          "0x04": "0x21",
+          "0x05": "0x22",
+          "0x06": "0x0a",
+          "0x0a": "0x00",
+          "0x3e": "0x10",
+          "0x3f": "0x00",
+          "0x42": "0xf8",
+          "0x55": "0x10",
+          "0x9d": "0x61",
+          "0x9e": "0x14"
+        },
+        "detected_vic": 4,
+        "transmitter_pll_locked": true,
+        "n": 6144,
+        "cts": 74250,
+        "cts_automatic": true,
+        "inferred_pixel_clock_hz": 74250000.0
+      },
+      {
+        "registers": {
+          "0x01": "0x00",
+          "0x02": "0x18",
+          "0x03": "0x00",
+          "0x04": "0x21",
+          "0x05": "0x22",
+          "0x06": "0x0a",
+          "0x0a": "0x00",
+          "0x3e": "0x10",
+          "0x3f": "0x00",
+          "0x42": "0xf8",
+          "0x55": "0x10",
+          "0x9d": "0x61",
+          "0x9e": "0x14"
+        },
+        "detected_vic": 4,
+        "transmitter_pll_locked": true,
+        "n": 6144,
+        "cts": 74250,
+        "cts_automatic": true,
+        "inferred_pixel_clock_hz": 74250000.0
+      },
+      {
+        "registers": {
+          "0x01": "0x00",
+          "0x02": "0x18",
+          "0x03": "0x00",
+          "0x04": "0x21",
+          "0x05": "0x22",
+          "0x06": "0x0a",
+          "0x0a": "0x00",
+          "0x3e": "0x10",
+          "0x3f": "0x00",
+          "0x42": "0xf8",
+          "0x55": "0x10",
+          "0x9d": "0x61",
+          "0x9e": "0x14"
+        },
+        "detected_vic": 4,
+        "transmitter_pll_locked": true,
+        "n": 6144,
+        "cts": 74250,
+        "cts_automatic": true,
+        "inferred_pixel_clock_hz": 74250000.0
+      },
+      {
+        "registers": {
+          "0x01": "0x00",
+          "0x02": "0x18",
+          "0x03": "0x00",
+          "0x04": "0x21",
+          "0x05": "0x22",
+          "0x06": "0x0a",
+          "0x0a": "0x00",
+          "0x3e": "0x10",
+          "0x3f": "0x00",
+          "0x42": "0xf8",
+          "0x55": "0x10",
+          "0x9d": "0x61",
+          "0x9e": "0x14"
+        },
+        "detected_vic": 4,
+        "transmitter_pll_locked": true,
+        "n": 6144,
+        "cts": 74250,
+        "cts_automatic": true,
+        "inferred_pixel_clock_hz": 74250000.0
+      },
+      {
+        "registers": {
+          "0x01": "0x00",
+          "0x02": "0x18",
+          "0x03": "0x00",
+          "0x04": "0x21",
+          "0x05": "0x22",
+          "0x06": "0x0a",
+          "0x0a": "0x00",
+          "0x3e": "0x10",
+          "0x3f": "0x00",
+          "0x42": "0xf8",
+          "0x55": "0x10",
+          "0x9d": "0x61",
+          "0x9e": "0x14"
+        },
+        "detected_vic": 4,
+        "transmitter_pll_locked": true,
+        "n": 6144,
+        "cts": 74250,
+        "cts_automatic": true,
+        "inferred_pixel_clock_hz": 74250000.0
+      },
+      {
+        "registers": {
+          "0x01": "0x00",
+          "0x02": "0x18",
+          "0x03": "0x00",
+          "0x04": "0x21",
+          "0x05": "0x22",
+          "0x06": "0x0a",
+          "0x0a": "0x00",
+          "0x3e": "0x10",
+          "0x3f": "0x00",
+          "0x42": "0xf8",
+          "0x55": "0x10",
+          "0x9d": "0x61",
+          "0x9e": "0x15"
+        },
+        "detected_vic": 4,
+        "transmitter_pll_locked": true,
+        "n": 6144,
+        "cts": 74250,
+        "cts_automatic": true,
+        "inferred_pixel_clock_hz": 74250000.0
+      },
+      {
+        "registers": {
+          "0x01": "0x00",
+          "0x02": "0x18",
+          "0x03": "0x00",
+          "0x04": "0x21",
+          "0x05": "0x22",
+          "0x06": "0x0a",
+          "0x0a": "0x00",
+          "0x3e": "0x10",
+          "0x3f": "0x00",
+          "0x42": "0xf8",
+          "0x55": "0x10",
+          "0x9d": "0x61",
+          "0x9e": "0x14"
+        },
+        "detected_vic": 4,
+        "transmitter_pll_locked": true,
+        "n": 6144,
+        "cts": 74250,
+        "cts_automatic": true,
+        "inferred_pixel_clock_hz": 74250000.0
+      },
+      {
+        "registers": {
+          "0x01": "0x00",
+          "0x02": "0x18",
+          "0x03": "0x00",
+          "0x04": "0x21",
+          "0x05": "0x22",
+          "0x06": "0x0a",
+          "0x0a": "0x00",
+          "0x3e": "0x10",
+          "0x3f": "0x00",
+          "0x42": "0xf8",
+          "0x55": "0x10",
+          "0x9d": "0x61",
+          "0x9e": "0x14"
+        },
+        "detected_vic": 4,
+        "transmitter_pll_locked": true,
+        "n": 6144,
+        "cts": 74250,
+        "cts_automatic": true,
+        "inferred_pixel_clock_hz": 74250000.0
+      }
+    ]
+  },
+  "rejected_candidate": {
+    "framebuffer": "8888 1 1280 720 5120",
+    "rbf_sha256": "c835cd5ec4fd8fe3d3543d3e248410bc2ead563db15744581783ee43ca3521a7",
+    "rows": [
+      {
+        "registers": {
+          "0x01": "0x00",
+          "0x02": "0x18",
+          "0x03": "0x00",
+          "0x04": "0x22",
+          "0x05": "0x44",
+          "0x06": "0x14",
+          "0x0a": "0x00",
+          "0x3e": "0x10",
+          "0x3f": "0x00",
+          "0x42": "0xf8",
+          "0x55": "0x10",
+          "0x9d": "0x61",
+          "0x9e": "0x16"
+        },
+        "detected_vic": 4,
+        "transmitter_pll_locked": true,
+        "n": 6144,
+        "cts": 148500,
+        "cts_automatic": true,
+        "inferred_pixel_clock_hz": 148500000.0
+      },
+      {
+        "registers": {
+          "0x01": "0x00",
+          "0x02": "0x18",
+          "0x03": "0x00",
+          "0x04": "0x22",
+          "0x05": "0x44",
+          "0x06": "0x14",
+          "0x0a": "0x00",
+          "0x3e": "0x10",
+          "0x3f": "0x00",
+          "0x42": "0xf8",
+          "0x55": "0x10",
+          "0x9d": "0x61",
+          "0x9e": "0x16"
+        },
+        "detected_vic": 4,
+        "transmitter_pll_locked": true,
+        "n": 6144,
+        "cts": 148500,
+        "cts_automatic": true,
+        "inferred_pixel_clock_hz": 148500000.0
+      },
+      {
+        "registers": {
+          "0x01": "0x00",
+          "0x02": "0x18",
+          "0x03": "0x00",
+          "0x04": "0x22",
+          "0x05": "0x44",
+          "0x06": "0x14",
+          "0x0a": "0x00",
+          "0x3e": "0x10",
+          "0x3f": "0x00",
+          "0x42": "0xf8",
+          "0x55": "0x10",
+          "0x9d": "0x61",
+          "0x9e": "0x16"
+        },
+        "detected_vic": 4,
+        "transmitter_pll_locked": true,
+        "n": 6144,
+        "cts": 148500,
+        "cts_automatic": true,
+        "inferred_pixel_clock_hz": 148500000.0
+      },
+      {
+        "registers": {
+          "0x01": "0x00",
+          "0x02": "0x18",
+          "0x03": "0x00",
+          "0x04": "0x22",
+          "0x05": "0x44",
+          "0x06": "0x14",
+          "0x0a": "0x00",
+          "0x3e": "0x10",
+          "0x3f": "0x00",
+          "0x42": "0xf8",
+          "0x55": "0x10",
+          "0x9d": "0x61",
+          "0x9e": "0x16"
+        },
+        "detected_vic": 4,
+        "transmitter_pll_locked": true,
+        "n": 6144,
+        "cts": 148500,
+        "cts_automatic": true,
+        "inferred_pixel_clock_hz": 148500000.0
+      },
+      {
+        "registers": {
+          "0x01": "0x00",
+          "0x02": "0x18",
+          "0x03": "0x00",
+          "0x04": "0x22",
+          "0x05": "0x44",
+          "0x06": "0x14",
+          "0x0a": "0x00",
+          "0x3e": "0x10",
+          "0x3f": "0x00",
+          "0x42": "0xf8",
+          "0x55": "0x10",
+          "0x9d": "0x61",
+          "0x9e": "0x16"
+        },
+        "detected_vic": 4,
+        "transmitter_pll_locked": true,
+        "n": 6144,
+        "cts": 148500,
+        "cts_automatic": true,
+        "inferred_pixel_clock_hz": 148500000.0
+      },
+      {
+        "registers": {
+          "0x01": "0x00",
+          "0x02": "0x18",
+          "0x03": "0x00",
+          "0x04": "0x22",
+          "0x05": "0x44",
+          "0x06": "0x14",
+          "0x0a": "0x00",
+          "0x3e": "0x10",
+          "0x3f": "0x00",
+          "0x42": "0xf8",
+          "0x55": "0x10",
+          "0x9d": "0x61",
+          "0x9e": "0x17"
+        },
+        "detected_vic": 4,
+        "transmitter_pll_locked": true,
+        "n": 6144,
+        "cts": 148500,
+        "cts_automatic": true,
+        "inferred_pixel_clock_hz": 148500000.0
+      },
+      {
+        "registers": {
+          "0x01": "0x00",
+          "0x02": "0x18",
+          "0x03": "0x00",
+          "0x04": "0x22",
+          "0x05": "0x44",
+          "0x06": "0x14",
+          "0x0a": "0x00",
+          "0x3e": "0x10",
+          "0x3f": "0x00",
+          "0x42": "0xf8",
+          "0x55": "0x10",
+          "0x9d": "0x61",
+          "0x9e": "0x16"
+        },
+        "detected_vic": 4,
+        "transmitter_pll_locked": true,
+        "n": 6144,
+        "cts": 148500,
+        "cts_automatic": true,
+        "inferred_pixel_clock_hz": 148500000.0
+      },
+      {
+        "registers": {
+          "0x01": "0x00",
+          "0x02": "0x18",
+          "0x03": "0x00",
+          "0x04": "0x22",
+          "0x05": "0x44",
+          "0x06": "0x14",
+          "0x0a": "0x00",
+          "0x3e": "0x10",
+          "0x3f": "0x00",
+          "0x42": "0xf8",
+          "0x55": "0x10",
+          "0x9d": "0x61",
+          "0x9e": "0x16"
+        },
+        "detected_vic": 4,
+        "transmitter_pll_locked": true,
+        "n": 6144,
+        "cts": 148500,
+        "cts_automatic": true,
+        "inferred_pixel_clock_hz": 148500000.0
+      }
+    ]
+  }
+}

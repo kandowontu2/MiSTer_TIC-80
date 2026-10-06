@@ -1,0 +1,71 @@
+TIC-80 for MiSTer integration
+Copyright (c) 2026 TIC-80 for MiSTer contributors
+Licensed under GNU GPL version 3 or later; see LICENSE.
+
+Project direction, MiSTer hardware testing and release maintenance: kando
+(GitHub: kandowontu2). Integration developed with assistance from OpenAI Codex.
+See CREDITS.md and licenses/ for the upstream authors and license notices.
+
+The bundled, unmodified optional Frontier Master Daemon originates from
+MiSTerOrganize/MiSTer_Frontier at commit
+a7c61e0a000d9dfd40235e638229e06a603534d5, under GPL version 3.
+https://github.com/MiSTerOrganize/MiSTer_Frontier
+An existing Frontier installation is preserved by the TIC-80 install script.
+
+The staged MiSTer emu interface, platform framework, and PLL originate from
+MiSTerOrganize/MiSTer_PICO-8 at commit
+72cb0405417d506c33e59ab51c1a374fc4db649e, including MiSTer Menu work by
+Alexey Melnikov (Sorgelig) and the respective authors named in source headers.
+https://github.com/MiSTerOrganize/MiSTer_PICO-8
+Original source headers and licenses are retained in the staged build.
+The local ascal.vhd override retains TEMLIB's original header and changes only
+the horizontal divider's first two arithmetic stages to compute their second-step
+candidates in parallel. Its outputs and pipeline latency are preserved.
+The local i2s.v override derives from the same pinned platform serializer.
+It keeps BCLK running during reset and latches short reset requests until
+data/LRCLK can be cleared at the normal safe data-update phase.
+
+The optional companion Main filename-transport candidate and the extracted
+SPI helpers used by its regression harness originate from MiSTer-devel/Main_MiSTer
+at commit 5a3a08662c25bd792043f8a8fb48e4be12099beb.
+https://github.com/MiSTer-devel/Main_MiSTer
+The candidate stages the committed source, preserves its source headers and
+LICENSE, and retains third-party library licenses in the full build tree.
+
+The statically linked TIC-80 runtime and optional console/editors originate from nesbox/TIC-80 at commit
+4dba5bc2640d9cde650fb0b427c9be6aab598de9 and retains its MIT license.
+https://github.com/nesbox/TIC-80
+Its dependencies retain their respective upstream licenses.
+The console/editor build also uses the pinned zip (kuba--/zip), argparse
+(cofyc/argparse), jsmn (zserge/jsmn) and blip-buf wave writer sources, retaining
+their original license headers and repository license files.
+Studio staging exposes its existing popup for platform messages and guards
+the FFT initialization when built without a microphone capture backend.
+Staging also completes failed hash downloads, validates cartridge caches,
+closes networking before callback owners, and releases the original PNG-save
+buffer before replacing it with the encoded image. The asynchronous HTTP
+transport uses the system curl executable with its original license.
+assets/cacert.pem is Mozilla CA data extracted by curl, under MPL version 2.0;
+see assets/LICENSE.cacert and assets/cacert-source.json for its license and
+pinned provenance. The bundle is used without changing the system trust store.
+
+Build staging retains upstream source/license headers while correcting the
+pinned native-cart serializer's returned length for CHUNK_LANG. Integration
+adapters isolate global interpreter state for Python, Janet, WASM, Wren,
+Ruby and Forth; upstream API implementations remain in the pinned checkout.
+The public-player adapter retains tick callback data and the clock epoch for
+each VM's lifetime; the pinned implementation recreated it on the stack.
+The core-close adapter releases the original RAM allocation after VM cleanup,
+including when WASM redirects the active RAM pointer into module memory.
+Build staging closes partially initialized VMs before discarding their pointers.
+The WASM module adapter frees its owned memory/table export and import names; the
+included wasm3 implementation retains its original source and license.
+The staged Python easing aliases copy their values before dictionary insertion
+can rehash and invalidate the original value pointers.
+The staged s7 source omits four unused permanent string allocations; its
+original implementation and license are retained.
+The MiniScript callback adapter temporarily clears/restores the main harness's
+yield flag around synchronous SCN, BDR and MENU callbacks.
+The integration's cartridge-file decoder uses the pinned libpng and zlib
+dependencies to validate PNG containers and extract a bounded native cartridge;
+live execution bypasses upstream's unchecked PNG read callback.

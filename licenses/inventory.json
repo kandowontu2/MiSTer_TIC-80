@@ -1,0 +1,242 @@
+[
+  {
+    "file": "integration/LICENSE",
+    "source": "LICENSE",
+    "sha256": "3972dc9744f6499f0f9b2dbf76696f2ae7ad8af9b23dde66d6af86c9dfb36986"
+  },
+  {
+    "file": "integration/NOTICE",
+    "source": "NOTICE",
+    "sha256": "995ac70a03289ebfb4d402b45d070374b7c3b14a95fd90b660fd4a3dad73f398"
+  },
+  {
+    "file": "TIC-80/LICENSE",
+    "source": "reference/tic80/LICENSE",
+    "sha256": "03fd7bbb45ecd7ef94fd5ce7ed8fc47a68235a0357a9f71275f49e86d4462f15"
+  },
+  {
+    "file": "MiSTer_PICO-8/LICENSE",
+    "source": "reference/pico8/LICENSE",
+    "sha256": "3972dc9744f6499f0f9b2dbf76696f2ae7ad8af9b23dde66d6af86c9dfb36986"
+  },
+  {
+    "file": "MiSTer_Frontier/LICENSE",
+    "source": "vendor/MiSTer_Frontier/LICENSE",
+    "sha256": "3972dc9744f6499f0f9b2dbf76696f2ae7ad8af9b23dde66d6af86c9dfb36986"
+  },
+  {
+    "file": "Mozilla-CA/LICENSE",
+    "source": "assets/LICENSE.cacert",
+    "sha256": "3f3d9e0024b1921b067d6f7f88deb4a60cbe7a78e76c64e3f1d7fc3b779b9d04"
+  },
+  {
+    "file": "moonscript/LICENSE",
+    "source": "reference/tic80/vendor/moonscript/LICENSE",
+    "sha256": "dc69c6a9096c628fbde766cc43d719533ef8659d0de01793ad7473e79b2054e8"
+  },
+  {
+    "file": "moonscript/luafilesystem/doc/us/license.html",
+    "source": "reference/tic80/vendor/moonscript/luafilesystem/doc/us/license.html",
+    "sha256": "082273533facdcba2636fc64c72310faa132c4c180e5c0d4ed4c1858fdbf1429"
+  },
+  {
+    "file": "yuescript/LICENSE",
+    "source": "reference/tic80/vendor/yuescript/LICENSE",
+    "sha256": "1958914fba8fd861801489cd271657137805fe1dcc9a6ebbec696b2e8dfb70e2"
+  },
+  {
+    "file": "yuescript/src/3rdParty/efsw/LICENSE",
+    "source": "reference/tic80/vendor/yuescript/src/3rdParty/efsw/LICENSE",
+    "sha256": "8fef52a57c521885cea7e8d1298603640c3513c34048d45327eac69816e13ea9"
+  },
+  {
+    "file": "yuescript/doc/docs/.vuepress/theme/LICENSE",
+    "source": "reference/tic80/vendor/yuescript/doc/docs/.vuepress/theme/LICENSE",
+    "sha256": "5818899c48b48d0c1e898741974b91ffaf938962349b32e25d4b37a031771364"
+  },
+  {
+    "file": "squirrel/COPYRIGHT",
+    "source": "reference/tic80/vendor/squirrel/COPYRIGHT",
+    "sha256": "94a63c453acb21a9c72ec69f8a783094b2a1d4a46d58ad22b17379d94df83aaa"
+  },
+  {
+    "file": "quickjs/LICENSE",
+    "source": "reference/tic80/vendor/quickjs/LICENSE",
+    "sha256": "2f2a9e35fbaa43435fad0cb8253a1f1d284282ba75b9ce5988bb9b10a5eac94f"
+  },
+  {
+    "file": "pocketpy/LICENSE",
+    "source": "reference/tic80/vendor/pocketpy/LICENSE",
+    "sha256": "5ad14c41f26ed1b8c9a0039ae566bc7ce00277aec1634220eae5db2bb8fc54ef"
+  },
+  {
+    "file": "pocketpy/docs/license.md",
+    "source": "reference/tic80/vendor/pocketpy/docs/license.md",
+    "sha256": "11e12c089a5aedd23cd4a875fdf073bcea9fa73a1aa4f0c68b35460363e40de9"
+  },
+  {
+    "file": "pocketpy/plugins/flutter/pocketpy/LICENSE",
+    "source": "reference/tic80/vendor/pocketpy/plugins/flutter/pocketpy/LICENSE",
+    "sha256": "bb12d030c3a6e159142359eddf89e4953aa331b1675805ab3e0d69a45f092df6"
+  },
+  {
+    "file": "wren/LICENSE",
+    "source": "reference/tic80/vendor/wren/LICENSE",
+    "sha256": "049fd00cbf8a7dc5155a8bd25ad1cc71b71fde904bdd85332058688155c949eb"
+  },
+  {
+    "file": "janet/LICENSE",
+    "source": "reference/tic80/vendor/janet/LICENSE",
+    "sha256": "7fd33ef526a0dd81439cf4644090977ac3bcbffd5ca68470d1bd55842168d1fe"
+  },
+  {
+    "file": "janet/tools/msi/LICENSE.rtf",
+    "source": "reference/tic80/vendor/janet/tools/msi/LICENSE.rtf",
+    "sha256": "ef6a0872b138958c32970720c6bff4e9bcc80e861615e1f54bfeb92f7848f037"
+  },
+  {
+    "file": "wasm3/LICENSE",
+    "source": "reference/tic80/vendor/wasm3/LICENSE",
+    "sha256": "ac6a4262cccf176c2fe0a51bf92108b1ecf9f27198dbdb5f4987c6fcf1d6859e"
+  },
+  {
+    "file": "mruby/LICENSE",
+    "source": "reference/tic80/vendor/mruby/LICENSE",
+    "sha256": "256039597f8be70af60096f2bef31f388d3612de554225b4adffc76249363e89"
+  },
+  {
+    "file": "miniscript2/LICENSE",
+    "source": "reference/tic80/vendor/miniscript2/LICENSE",
+    "sha256": "f412331f01bdc8ad88e9ab48413aca39e01ebaa49b3f5e7ed2639058f99d5238"
+  },
+  {
+    "file": "miniscript2/cpp/editline/LICENSE",
+    "source": "reference/tic80/vendor/miniscript2/cpp/editline/LICENSE",
+    "sha256": "f29a3f2b9f415b6f7beb355383543ff224e6d9c7f2f4b53440ad2989fb7f53b2"
+  },
+  {
+    "file": "pforth/license.txt",
+    "source": "reference/tic80/vendor/pforth/license.txt",
+    "sha256": "a3d1b415e151a77977b8819d6f11bc908a464adc9f5663d7daaf11a85430234e"
+  },
+  {
+    "file": "blip-buf/license.txt",
+    "source": "reference/tic80/vendor/blip-buf/license.txt",
+    "sha256": "319daefe38ebeead3df178e5937898a52d67c0c795f54f1c0bb10ac3b9cffb63"
+  },
+  {
+    "file": "libpng/LICENSE",
+    "source": "reference/tic80/vendor/libpng/LICENSE",
+    "sha256": "905fe5046517c4fe3bc63f36cb7b80d373e174e4afe03da1f5ad0077379dce0a"
+  },
+  {
+    "file": "libpng/ci/LICENSE_MIT.txt",
+    "source": "reference/tic80/vendor/libpng/ci/LICENSE_MIT.txt",
+    "sha256": "9eb6f69d48a1dd764e8a33f14a584f460d3cec653477c136a95dd6df9c249211"
+  },
+  {
+    "file": "libpng/contrib/gregbook/COPYING",
+    "source": "reference/tic80/vendor/libpng/contrib/gregbook/COPYING",
+    "sha256": "f77926ade9d6c7c3e48c3868ceedd5c9fc4bc79cfa186bb0001d067f59492af8"
+  },
+  {
+    "file": "libpng/contrib/gregbook/LICENSE",
+    "source": "reference/tic80/vendor/libpng/contrib/gregbook/LICENSE",
+    "sha256": "e2eb2ac0e798b3903a8f23b245c7c188e2e1378b3ad5d73680aba890083f6575"
+  },
+  {
+    "file": "libpng/contrib/pngexif/LICENSE_MIT.txt",
+    "source": "reference/tic80/vendor/libpng/contrib/pngexif/LICENSE_MIT.txt",
+    "sha256": "9eb6f69d48a1dd764e8a33f14a584f460d3cec653477c136a95dd6df9c249211"
+  },
+  {
+    "file": "libpng/contrib/pngminus/LICENSE.txt",
+    "source": "reference/tic80/vendor/libpng/contrib/pngminus/LICENSE.txt",
+    "sha256": "f21b33f60215447bb76ead66849014cca5bdf4b257f0317ef5829e8a5a8438e3"
+  },
+  {
+    "file": "zlib/LICENSE",
+    "source": "reference/tic80/vendor/zlib/LICENSE",
+    "sha256": "18dbd37f0ab175c37877e9053ff870a7de2809a3e9b9673b2696aa5009264638"
+  },
+  {
+    "file": "zlib/contrib/dotzlib/LICENSE_1_0.txt",
+    "source": "reference/tic80/vendor/zlib/contrib/dotzlib/LICENSE_1_0.txt",
+    "sha256": "36266a8fd073568394cb81cdb2b124f7fdae2c64c1a7ed09db34b4d22efa2951"
+  },
+  {
+    "file": "giflib/COPYING",
+    "source": "reference/tic80/vendor/giflib/COPYING",
+    "sha256": "d1c9e11eca6d15fbf718346bb585d72bba7b5f76113bc78d6f01c3d2ff6d391a"
+  },
+  {
+    "file": "zip/LICENSE.txt",
+    "source": "reference/tic80/vendor/zip/LICENSE.txt",
+    "sha256": "6c1643ab0353b42030e903654fdb3845570b741da5ffafcaf9d305e8ec79a4a0"
+  },
+  {
+    "file": "argparse/LICENSE",
+    "source": "reference/tic80/vendor/argparse/LICENSE",
+    "sha256": "ac6e5236f043132e379454b0464def6962df26836f471828196181e60c24fcbc"
+  },
+  {
+    "file": "jsmn/LICENSE",
+    "source": "reference/tic80/vendor/jsmn/LICENSE",
+    "sha256": "24b1f9656f5ccd7518ca8ad71a86be66a06dd7e6204a569e7475be7c0ef9ee5a"
+  },
+  {
+    "file": "dirent/LICENSE",
+    "source": "reference/tic80/vendor/dirent/LICENSE",
+    "sha256": "aeaa7ce50eac5a580d3df83a8350c274971512c1404e75930caaff19906ec75f"
+  },
+  {
+    "file": "dlfcn/COPYING",
+    "source": "reference/tic80/vendor/dlfcn/COPYING",
+    "sha256": "4cc7ac997b9293db5919baf630100cc09b3508efdfe6a6611c95511fb863b3c7"
+  },
+  {
+    "file": "embedded-notices/vendor/lua/lua.h",
+    "source": "reference/tic80/vendor/lua/lua.h",
+    "sha256": "f40a2ff93ad7c1f0cd22121dae4c1ebcc696eac4023ee3647cd24910f2ca1f2c"
+  },
+  {
+    "file": "embedded-notices/vendor/fennel/fennel.lua",
+    "source": "reference/tic80/vendor/fennel/fennel.lua",
+    "sha256": "5dfbb7eaede23fc2692e493f0999c2189766a8caa830cb3f115e4410458b57e3"
+  },
+  {
+    "file": "embedded-notices/vendor/s7/s7.c",
+    "source": "reference/tic80/vendor/s7/s7.c",
+    "sha256": "b06c6402cf1062a34d1626b91d2934cc1c045d261d26cecd2f73ab2371cf59c6"
+  },
+  {
+    "file": "embedded-notices/vendor/lpeg/lpeg.html",
+    "source": "reference/tic80/vendor/lpeg/lpeg.html",
+    "sha256": "de2f151aa5bc4a60e53efc1cd412faf2c3133346715755fe8c5a2edf976fd171"
+  },
+  {
+    "file": "embedded-notices/src/ext/miniaudio.h",
+    "source": "reference/tic80/src/ext/miniaudio.h",
+    "sha256": "b468caf317dc32552a9bbdb8c4083bb3d9fa268f5fac502aeb2973e48579400b"
+  },
+  {
+    "file": "embedded-notices/src/ext/md5.c",
+    "source": "reference/tic80/src/ext/md5.c",
+    "sha256": "7395cb7adf71cfd96f34e41d55da25ec35a5fd88502dfcdfe8d8ae0964836315"
+  },
+  {
+    "file": "embedded-notices/vendor/blip-buf/blip_buf.c",
+    "source": "reference/tic80/vendor/blip-buf/blip_buf.c",
+    "sha256": "a9f5f2de73e34e9d42010a4517b1df210a7430d668f83e50149cf7980bf1b78c"
+  },
+  {
+    "file": "embedded-notices/vendor/zip/src/miniz.h",
+    "source": "reference/tic80/vendor/zip/src/miniz.h",
+    "sha256": "282c65d04b8cce50b71cd60c7463cab5f6c15a872a5b1936c45fc85e1518384e"
+  },
+  {
+    "file": "GCC/COPYING.RUNTIME",
+    "source": "https://raw.githubusercontent.com/gcc-mirror/gcc/releases/gcc-10.2.0/COPYING.RUNTIME",
+    "sha256": "9d6b43ce4d8de0c878bf16b54d8e7a10d9bd42b75178153e3af6a815bdc90f74"
+  }
+]

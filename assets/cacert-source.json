@@ -1,0 +1,7 @@
+{
+  "url": "https://curl.se/ca/cacert.pem",
+  "sha256": "a41b5d356aea97a529fe27e0f7316d2f9d946d75927476cf9cf1b90637d00505",
+  "retrieved_at": "2026-10-01T02:42:46.691647+00:00",
+  "license": "MPL-2.0",
+  "source": "Mozilla certificate store extracted by curl"
+}

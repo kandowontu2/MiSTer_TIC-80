@@ -1,0 +1,47 @@
+{
+  "captured_at": "2026-10-06T00:42:37.600359+00:00",
+  "source": "Mixed captures: native MiSTer editors, earlier hardware Tetris, and modeled-transport desktop startup console; see each entry",
+  "stock_Main_qualification": false,
+  "screenshots": [
+    {
+      "file": "tetris.png",
+      "view": "Tetris gameplay, earlier development hardware capture",
+      "source": "build/hardware-tetris.png",
+      "sha256": "e6715f47aef44b7a849225168e4839f7b1a5e8461950a1c7608b2a108e631ace",
+      "note": "Earlier prototype; not a stock-Main release validation"
+    },
+    {
+      "file": "studio-sprites.png",
+      "view": "Studio sprite editor",
+      "width": 256,
+      "height": 144,
+      "sha256": "e67b195114c906d3f8a9b63851d90db249127084937b1f424b0d8856dbef0082"
+    },
+    {
+      "file": "studio-music.png",
+      "view": "Studio music editor",
+      "width": 256,
+      "height": 144,
+      "sha256": "eff1573de2420dd828a97db087f7a41f650613127ad66b121e9bfeb8c8b0920f"
+    },
+    {
+      "file": "studio-code.png",
+      "view": "Studio code editor",
+      "width": 256,
+      "height": 144,
+      "sha256": "c4d33af7b437103fc155ef4a49a1910a0c122b3ec8d487748c79b22ee62295bf"
+    },
+    {
+      "file": "studio-console.png",
+      "view": "Clean Studio startup console",
+      "width": 256,
+      "height": 144,
+      "sha256": "2060b519837e296a700dc6fdda5ac65010385a6a5f593c1e8fc2e2e3509d5d34",
+      "source": "Actual desktop Studio render with modeled DDR transport",
+      "frontend_sha256": "377e6e7bd3ff9f386cbd9c5fb6e9b816d19f4c065b21ec0f739ac35c6767ae73"
+    }
+  ],
+  "Main_sha256": "81253dc278940f4ce29027f128b156d576e441c6ae3890e50223b68cf80c0748",
+  "Studio_sha256": "9123c34a0b6bbe412082c862022285c3934923c6ef6a727f61deb700f84afe59",
+  "run_shortcut_delivered": true
+}

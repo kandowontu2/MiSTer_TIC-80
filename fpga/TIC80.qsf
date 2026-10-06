@@ -1,0 +1,18 @@
+set_global_assignment -name TOP_LEVEL_ENTITY sys_top
+source features.tcl
+set_global_assignment -name LAST_QUARTUS_VERSION "17.0.0 Lite Edition"
+set_global_assignment -name GENERATE_RBF_FILE ON
+set_global_assignment -name PROJECT_OUTPUT_DIRECTORY output_files
+set_global_assignment -name NUM_PARALLEL_PROCESSORS 2
+set_global_assignment -name OPTIMIZATION_MODE "HIGH PERFORMANCE EFFORT"
+set_global_assignment -name FITTER_EFFORT "STANDARD FIT"
+set_global_assignment -name FINAL_PLACEMENT_OPTIMIZATION ALWAYS
+set_global_assignment -name PHYSICAL_SYNTHESIS_EFFORT EXTRA
+set_global_assignment -name ROUTER_REGISTER_DUPLICATION ON
+source performance.tcl
+source cdc.tcl
+set_global_assignment -name SEED 22
+source sys/sys.tcl
+source sys/sys_analog.tcl
+source files.qip
+set_global_assignment -name SDC_FILE TIC80.sdc
