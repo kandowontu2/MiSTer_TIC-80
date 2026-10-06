@@ -24,6 +24,19 @@ static uint64_t counter(void) {
 static int session_lost(tm_backend *backend) {
     return tm_backend_core_selected(backend)==1 && tm_backend_cart_pending(backend)<0;
 }
+static int recover_output(tm_backend *backend,tm_input_state *input,unsigned *failures,
+                          unsigned long *flushes,const int16_t *silence) {
+    // A genuine FPGA loss is handled by the reload/reset guard in the loop.
+    // A bad output ACK in a matching session only needs a transport flush.
+    if(session_lost(backend)) return 0;
+    if(tm_backend_core_selected(backend)!=1 || ++*failures>=3) return -1;
+    if(tm_backend_restart(backend)) return session_lost(backend)?0:-1;
+    backend->pacer.target_frames=3200;
+    if(tm_backend_audio(backend,silence,1600)) return session_lost(backend)?0:-1;
+    *input=(tm_input_state){0};++*flushes;
+    tm_live_log_printf(logs,"Studio output transport flushed; worker retained; session=%u\n",backend->session);
+    return 1;
+}
 static int load(tm_studio_session *studio,const char *path) {
     return tm_studio_session_load_file(studio,path,5000)==TM_STUDIO_OK?0:-1;
 }
@@ -81,6 +94,7 @@ int main(int argc,char **argv) {
     int reconnecting=0,reload_pending=0,generation_valid=0;
     uint32_t previous_status=0; tm_core_generation generation={0};
     unsigned long reloads=0; uint64_t reload_started=0;
+    unsigned output_failures=0; unsigned long output_flushes=0;
     const int16_t silence[3200]={0};
     uint64_t total=0,maximum=0,started=0;
     if(tm_backend_start(&backend)) goto done;
@@ -254,7 +268,8 @@ int main(int argc,char **argv) {
         // replay an old music block or copy a partially published product.
         if(tm_backend_audio(&backend,(reset_held || result==TM_STUDIO_PENDING || result==TM_STUDIO_SAVE_ERROR || operation==OP_LOAD || operation==OP_PAUSE)?silence:tm_studio_session_audio(studio),800) ||
            tm_backend_present_realtime(&backend,(const uint8_t*)tm_studio_session_screen(studio),TM_FRAME_BYTES)) {
-            if(session_lost(&backend)) continue; failed=1; break;
+            if(recover_output(&backend,&input_state,&output_failures,&output_flushes,silence)<0) { failed=1; break; }
+            continue;
         }
         ++ticks;
         if(!reset_held && !pending && (!limit || ticks<limit)) {
@@ -286,9 +301,11 @@ int main(int argc,char **argv) {
         if(duration>maximum) maximum=duration;
         over_budget+=duration>16666667;
         if(tm_backend_pace(&backend,&stopping)) {
-            if(!stopping && session_lost(&backend)) continue;
-            if(!stopping) failed=1; break;
+            if(stopping) break;
+            if(recover_output(&backend,&input_state,&output_failures,&output_flushes,silence)<0) { failed=1; break; }
+            continue;
         }
+        output_failures=0;
     }
     if(!failed && !stopping && !departed && tm_backend_drain(&backend)) failed=1;
 done:
@@ -305,6 +322,7 @@ done:
     tm_live_log_printf(logs,"Studio selection: prompts=%lu cancelled=%lu\n",cart_prompts,cart_cancelled);
     tm_live_log_printf(logs,"Studio reset: holds=%lu runs=%lu\n",reset_holds,reset_runs);
     tm_live_log_printf(logs,"Studio FPGA: reloads=%lu\n",reloads);
+    tm_live_log_printf(logs,"Studio output: transport_flushes=%lu\n",output_flushes);
     unsigned dropped=tm_live_log_close(logs); logs=NULL;
     if(dropped) fprintf(stderr,"Studio log: dropped=%u\n",dropped);
     return failed?1:0;

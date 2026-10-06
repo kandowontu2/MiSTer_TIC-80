@@ -31,6 +31,22 @@ static u64 real_counter(void *data)
     return (u64)t.tv_sec * 1000000000ULL + t.tv_nsec;
 }
 static u64 frequency(void *data) { (void)data; return 1000000000ULL; }
+static int restart_transport(tm_backend *backend, int *lost_session)
+{
+    // Main can hold/reset the bridge longer than a single handshake. A new
+    // FPGA also captures the first stale DDR nonce and requires a later one.
+    // Withhold ticks while retrying; a different selected core ends the wait.
+    u64 until = real_counter(NULL) + 10000000000ULL;
+    while (!stopping && real_counter(NULL) < until) {
+        int selected = tm_backend_core_selected(backend);
+        if (selected != 1) return -1;
+        if (!tm_backend_restart(backend)) return 0;
+        if (lost_session) *lost_session = 1;
+        struct timespec pause = {0, 5000000};
+        nanosleep(&pause, NULL);
+    }
+    return -1;
+}
 #ifdef TM_TRACE_RESETS
 static void reset_trace(tm_backend *b, const char *event, uint32_t status,
                         uint32_t previous, unsigned long ticks)
@@ -38,9 +54,11 @@ static void reset_trace(tm_backend *b, const char *event, uint32_t status,
     struct stat name = {0};
     if (b->core_name_path) stat(b->core_name_path, &name);
     uint32_t ack = *(volatile uint32_t *)(b->memory + TM_SESSION_ACK_OFFSET);
-    fprintf(stderr, "Reset trace: ns=%llu event=%s status=%08x previous=%08x session=%u ack=%u ticks=%lu name=%lld.%09ld\n",
+    uint32_t request = *(volatile uint32_t *)(b->memory + TM_SESSION_REQUEST_OFFSET);
+    uint32_t identity = *(volatile uint32_t *)(b->memory + TM_IDENTITY_OFFSET);
+    fprintf(stderr, "Reset trace: ns=%llu event=%s status=%08x previous=%08x session=%u ack=%u request=%u identity=%08x ticks=%lu name=%lld.%09ld\n",
         (unsigned long long)real_counter(NULL), event, status, previous,
-        b->session, ack, ticks, (long long)name.st_mtim.tv_sec, name.st_mtim.tv_nsec);
+        b->session, ack, request, identity, ticks, (long long)name.st_mtim.tv_sec, name.st_mtim.tv_nsec);
 }
 #else
 #define reset_trace(...) ((void)0)
@@ -197,7 +215,7 @@ int tm_serve(int argc, char **argv)
     while (!stopping && !failed && (!limit || ticks < limit)) {
         int selected = tm_backend_core_selected(&backend);
         if (selected == 0) { departed = 1; break; }
-        if (selected < 0) { transport_failed = 1; break; }
+        if (selected < 0) { reset_trace(&backend, "selection-unavailable", 0, previous_status, ticks); transport_failed = 1; break; }
         uint32_t status = tm_backend_status(&backend);
         int reset_released = !(status & 1) && (previous_status & 1);
         int pending = tm_backend_cart_pending(&backend);
@@ -209,7 +227,7 @@ int tm_serve(int argc, char **argv)
             reset_trace(&backend, "metadata-session-lost", status, previous_status, ticks);
             // Hardware reset preserves our private cartridge and saves. A
             // core switch loses identity and makes this restart fail safely.
-            if (tm_backend_restart(&backend)) { transport_failed = 1; break; }
+            if (restart_transport(&backend, NULL)) { reset_trace(&backend, "metadata-restart-failed", status, previous_status, ticks); transport_failed = 1; break; }
             // A falling edge across two FPGA sessions belongs to the old
             // session, not to Main's new initialization. Establish new history.
             previous_status = status = tm_backend_status(&backend);
@@ -219,7 +237,7 @@ int tm_serve(int argc, char **argv)
                 if (!reload_pending) reload_started = real_counter(NULL);
                 reload_pending = 1;
             }
-            pending = 0;
+            pending = tm_backend_cart_pending(&backend);
         }
         if (reload_pending) {
             tm_core_generation next = {0};
@@ -246,7 +264,7 @@ int tm_serve(int argc, char **argv)
                 reset_screen = reload_pending ? screen("Reloading core", "Waiting for MiSTer initialization") :
                     screen("Reset held", "Release reset to restart");
                 if (!reset_screen) { failed = 1; break; }
-                if (tm_backend_restart(&backend)) { transport_failed = 1; break; }
+                if (restart_transport(&backend, NULL)) { reset_trace(&backend, "hold-restart-failed", status, previous_status, ticks); transport_failed = 1; break; }
             }
         } else if (reset_screen) {
             reset_trace(&backend, "reset-hold-leave", status, previous_status, ticks);
@@ -261,7 +279,7 @@ int tm_serve(int argc, char **argv)
             pause_started = 0;
             uint8_t *bytes = cached;
             size_t size = cached_size;
-            if (tm_backend_restart(&backend)) { transport_failed = 1; break; }
+            if (restart_transport(&backend, NULL)) { transport_failed = 1; break; }
             int loaded_screen = loading(&backend);
             if (loaded_screen) {
                 if (loaded_screen == -2) failed = 1;
@@ -324,7 +342,7 @@ int tm_serve(int argc, char **argv)
             tic80_delete(notice); notice = NULL;
             if (pause_started) time_offset += real_counter(NULL) - pause_started;
             pause_started = 0;
-            if (tm_backend_restart(&backend)) { transport_failed = 1; break; }
+            if (restart_transport(&backend, NULL)) { transport_failed = 1; break; }
         }
         tic80 *visible = reset_screen ? reset_screen : notice ? notice : tic;
         script_error = cart_exit = 0;
@@ -335,7 +353,7 @@ int tm_serve(int argc, char **argv)
             tm_input_snapshot snapshot;
             if (tm_backend_inputs(&backend, &snapshot) < 0) {
                 reset_trace(&backend, "input-session-lost", status, previous_status, ticks);
-                if (tm_backend_restart(&backend)) { transport_failed = 1; break; }
+                if (restart_transport(&backend, NULL)) { reset_trace(&backend, "input-restart-failed", status, previous_status, ticks); transport_failed = 1; break; }
                 previous_status = tm_backend_status(&backend);
                 force_reset = cached != NULL;
                 if (cached && backend.core_name_path) {
@@ -355,7 +373,7 @@ int tm_serve(int argc, char **argv)
         if (!playing || notice || reset_screen) tic80_sound(visible);
         if (!notice && !reset_screen && playing && (script_error || cart_exit)) {
             fprintf(stderr, "Cartridge %s\n", script_error ? "failed" : "requested exit");
-            if (tm_backend_restart(&backend)) { transport_failed = 1; break; }
+            if (restart_transport(&backend, NULL)) { transport_failed = 1; break; }
             if (tm_pmem_save(&save, tic)) fprintf(stderr, "Could not finish cartridge save\n");
             tm_pmem_close(&save);
             tm_vm_close(game); game = NULL;
@@ -369,7 +387,7 @@ int tm_serve(int argc, char **argv)
             if (game_ticks % 60 == 0 && tm_pmem_schedule(&save, tic)) {
                 notice = screen("Save error", "Check the SD card");
                 if (!notice) { failed = 1; break; }
-                if (tm_backend_restart(&backend)) { transport_failed = 1; break; }
+                if (restart_transport(&backend, NULL)) { transport_failed = 1; break; }
                 pause_started = real_counter(NULL);
                 notice_until = pause_started + 2000000000ULL;
                 continue;
@@ -382,16 +400,21 @@ int tm_serve(int argc, char **argv)
         if (output_result == -2) { failed = 1; break; }
         if (output_result) {
             reset_trace(&backend, "output-session-lost", status, previous_status, ticks);
-            // A same-core FPGA reload may arrive while blocked on a payload
-            // acknowledgment. Recover the session here too, retaining the
-            // private cartridge and save instead of depending on a respawn.
-            if (++transport_failures >= 3 || tm_backend_restart(&backend)) { transport_failed = 1; break; }
+            // A bad output acknowledgment can occur while identity and the
+            // session still match. Flush that transport without restarting the
+            // VM or waiting for a Main initialization event. An actually lost
+            // FPGA session still requires the normal reload/reset guard.
+            int lost_session = tm_backend_cart_pending(&backend) < 0;
+            if (++transport_failures >= 3 || restart_transport(&backend, &lost_session)) { reset_trace(&backend, "output-restart-failed", status, previous_status, ticks); transport_failed = 1; break; }
             previous_status = tm_backend_status(&backend);
-            force_reset = cached != NULL;
-            if (cached && backend.core_name_path) {
+            force_reset = lost_session && cached != NULL;
+            if (lost_session && cached && backend.core_name_path) {
                 if (!reload_pending) reload_started = real_counter(NULL);
                 reload_pending = 1;
             }
+            // A new transport also starts new wheel totals. Establish their
+            // baseline before another tick, rather than replaying old deltas.
+            input_state = (tm_input_state){0};
             continue;
         }
         if (!reload_pending) {
@@ -404,7 +427,7 @@ int tm_serve(int argc, char **argv)
     }
     if (!stopping && !failed && !transport_failed && !departed && tm_backend_core_selected(&backend) != 0 && tm_backend_drain(&backend))
         transport_failed = 1;
-    if (transport_failed) {
+    if (transport_failed && !stopping) {
         // An explicitly selected different core is an intentional exit. Missing
         // selection, lost identity on TIC-80, and save failures remain errors.
         if (tm_backend_core_selected(&backend) == 0) departed = 1;

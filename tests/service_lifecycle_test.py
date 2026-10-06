@@ -115,7 +115,12 @@ def run(service, scenario):
                                 wait_states.append((task.name,(task/'wchan').read_text(),(task/'syscall').read_text()))
                             except FileNotFoundError:
                                 pass
-                    assert waiting<4, (scenario,wait_states)
+                    # Reconfiguration on an explicitly selected TIC-80 has a
+                    # ten-second recovery budget. Unknown selection still
+                    # fails promptly; intentional departures keep their tighter
+                    # sub-second check below.
+                    budget = 12 if scenario in ('lost-identity','stalled-tic80') else 4
+                    assert waiting<budget, (scenario,wait_states)
                     time.sleep(.005)
                 elapsed = time.monotonic()-started
                 output, errors = (root/'stdout').read_text(), (root/'stderr').read_text()

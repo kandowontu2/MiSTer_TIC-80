@@ -29,9 +29,22 @@ static uint32_t reg(tm_backend *b,unsigned offset)
 typedef struct {
     uint32_t nonce, slots, underruns, written, played, publication, presented, heartbeat;
 } snapshot;
+static int matching_statistics(tm_backend *b,const char *phase)
+{
+    uint32_t identity=reg(b,TM_IDENTITY_OFFSET);
+    uint32_t magic=reg(b,TM_STATS_SEQUENCE_OFFSET+4);
+    if (identity==TM_MAGIC && magic==TM_STATS_MAGIC) return 1;
+    /* Preserve the failing reads before taking any additional observations.
+     * These diagnostics do not retry, repair, or accept an invalid snapshot. */
+    fprintf(stderr,"Matching hardware statistics unavailable: phase=%s identity=%08x statistics_magic=%08x sequence=%u request=%u ack=%u heartbeat=%u identity_after=%08x statistics_magic_after=%08x\n",
+        phase,identity,magic,reg(b,TM_STATS_SEQUENCE_OFFSET),
+        reg(b,TM_SESSION_REQUEST_OFFSET),reg(b,TM_SESSION_ACK_OFFSET),
+        reg(b,TM_HEARTBEAT_OFFSET),reg(b,TM_IDENTITY_OFFSET),reg(b,TM_STATS_SEQUENCE_OFFSET+4));
+    return 0;
+}
 static int read_snapshot(tm_backend *b,snapshot *out)
 {
-    if (reg(b,TM_IDENTITY_OFFSET)!=TM_MAGIC || reg(b,TM_STATS_SEQUENCE_OFFSET+4)!=TM_STATS_MAGIC) return -1;
+    if (!matching_statistics(b,"before")) return -1;
     for (unsigned attempt=0;attempt<64;++attempt) {
         uint32_t sequence=reg(b,TM_STATS_SEQUENCE_OFFSET);
         if (sequence&1) continue;
@@ -43,7 +56,7 @@ static int read_snapshot(tm_backend *b,snapshot *out)
         next.heartbeat=reg(b,TM_HEARTBEAT_OFFSET);
         if (sequence!=reg(b,TM_STATS_SEQUENCE_OFFSET) || !next.nonce ||
             next.nonce!=reg(b,TM_SESSION_ACK_OFFSET) || next.nonce!=reg(b,TM_SESSION_REQUEST_OFFSET)) continue;
-        if (reg(b,TM_IDENTITY_OFFSET)!=TM_MAGIC || reg(b,TM_STATS_SEQUENCE_OFFSET+4)!=TM_STATS_MAGIC) return -1;
+        if (!matching_statistics(b,"after")) return -1;
         *out=next; return 1;
     }
     return 0;
@@ -78,7 +91,7 @@ int main(int argc,char **argv)
     while (!stopping) {
         if (!memory && !selected()) { result=1; break; }
         snapshot state; int status=read_snapshot(&b,&state);
-        if (status<0) { fprintf(stderr,"Matching hardware statistics unavailable\n"); result=1; break; }
+        if (status<0) { result=1; break; }
         if (status>0) {
             if (nonce && nonce!=state.nonce) { fprintf(stderr,"Audio session changed during monitoring\n"); result=1; break; }
             nonce=state.nonce;

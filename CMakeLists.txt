@@ -140,6 +140,7 @@ if(Python3_FOUND)
     add_test(NAME hardware_access_hold COMMAND "${Python3_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/tests/hardware_access_test.py")
     add_test(NAME hid_native_probe_driver COMMAND "${Python3_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_hid_pan_native.py")
     add_test(NAME hid_native_frontend_oracle COMMAND "${Python3_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_native_frontend_oracle.py")
+    add_test(NAME native_music_soak_oracle COMMAND "${Python3_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_native_music_oracle.py")
     add_test(NAME native_library_snapshot COMMAND "${Python3_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/tests/native_library_snapshot_test.py")
     add_test(NAME fpga_build_provenance COMMAND "${Python3_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/tests/fpga_build_record_test.py")
     add_test(NAME quartus_native_runner COMMAND "${Python3_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/tests/quartus_runner_test.py")
@@ -675,6 +676,12 @@ if(TM_BUILD_RUNTIME)
                 add_test(NAME studio_osd_transport COMMAND "${Python3_EXECUTABLE}"
                     "${CMAKE_CURRENT_SOURCE_DIR}/tests/studio_osd_test.py" --frontend "$<TARGET_FILE:tic80-studio-live>")
                 set_tests_properties(studio_osd_transport PROPERTIES TIMEOUT 30)
+                foreach(output_fault frame audio)
+                    add_test(NAME studio_live_output_${output_fault} COMMAND "${Python3_EXECUTABLE}"
+                        "${CMAKE_CURRENT_SOURCE_DIR}/tests/service_transport_recovery_test.py"
+                        --service "$<TARGET_FILE:tic80-studio-live>" --frontend studio --fault "${output_fault}")
+                    set_tests_properties(studio_live_output_${output_fault} PROPERTIES TIMEOUT 15)
+                endforeach()
                 foreach(selection_scenario IN ITEMS cancel accept latest reset crash escape departure)
                     add_test(NAME studio_selection_${selection_scenario} COMMAND "${Python3_EXECUTABLE}"
                         "${CMAKE_CURRENT_SOURCE_DIR}/tests/studio_selection_transport_test.py" --frontend "$<TARGET_FILE:tic80-studio-live>"
@@ -742,13 +749,25 @@ if(TM_BUILD_RUNTIME)
             set_tests_properties(cartridge_service PROPERTIES TIMEOUT 25)
             add_test(NAME cartridge_lifecycle COMMAND "${Python3_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/tests/service_lifecycle_test.py"
                 --service "$<TARGET_FILE:tic80-live>")
-            set_tests_properties(cartridge_lifecycle PROPERTIES TIMEOUT 30)
+            set_tests_properties(cartridge_lifecycle PROPERTIES TIMEOUT 50)
             add_test(NAME cartridge_held_reset COMMAND "${Python3_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/tests/service_reset_test.py"
                 --service "$<TARGET_FILE:tic80-live>")
             set_tests_properties(cartridge_held_reset PROPERTIES TIMEOUT 12)
             add_test(NAME cartridge_main_initialization COMMAND "${Python3_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/tests/service_reload_initialization_test.py"
                 --service "$<TARGET_FILE:tic80-live>")
             set_tests_properties(cartridge_main_initialization PROPERTIES TIMEOUT 20)
+            foreach(configuration_scenario offline identity replacement departure stop timeout)
+                add_test(NAME cartridge_reconfiguration_${configuration_scenario} COMMAND "${Python3_EXECUTABLE}"
+                    "${CMAKE_CURRENT_SOURCE_DIR}/tests/service_fpga_offline_test.py"
+                    --service "$<TARGET_FILE:tic80-live>" --mode "${configuration_scenario}")
+                set_tests_properties(cartridge_reconfiguration_${configuration_scenario} PROPERTIES TIMEOUT 18)
+            endforeach()
+            foreach(output_fault frame audio)
+                add_test(NAME cartridge_live_output_${output_fault} COMMAND "${Python3_EXECUTABLE}"
+                    "${CMAKE_CURRENT_SOURCE_DIR}/tests/service_transport_recovery_test.py"
+                    --service "$<TARGET_FILE:tic80-live>" --fault "${output_fault}")
+                set_tests_properties(cartridge_live_output_${output_fault} PROPERTIES TIMEOUT 15)
+            endforeach()
             if(TARGET pmem_fsync_fault)
                 add_test(NAME cartridge_autosave_recovery COMMAND "${Python3_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/tests/service_pmem_recovery_test.py"
                     --service "$<TARGET_FILE:tic80-live>" --fault-library "$<TARGET_FILE:pmem_fsync_fault>")

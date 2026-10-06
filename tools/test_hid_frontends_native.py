@@ -17,7 +17,7 @@ import struct
 import time
 import uuid
 import paramiko
-from hardware_ssh import command, connect
+from hardware_ssh import command, connect, read_with_reconnect
 from test_hid_pan_native import STOCK, cartridge_metadata
 from analyze_hdmi_clock import analyze
 
@@ -68,8 +68,9 @@ end
 
 
 class PrivateTest:
-    def __init__(self, client, evidence):
+    def __init__(self, client, evidence, reconnect=None):
         self.client, self.evidence = client, evidence
+        self.reconnect = reconnect
         self.result = {'passed': False, 'dispatches': [], 'observations': [],
                        'installed_payloads_replaced': False, 'shared_Main_replaced': False}
 
@@ -77,7 +78,18 @@ class PrivateTest:
         (self.evidence / 'result.json').write_text(json.dumps(self.result, indent=2) + '\n')
 
     def run(self, text, timeout=45):
-        return command(self.client, text, timeout=timeout)
+        """Observe only; every mutation must go through dispatch instead."""
+        return self.read_operation(lambda: command(self.client, text, timeout=timeout))
+
+    def read_operation(self, operation):
+        if self.reconnect is None:
+            return operation()
+        def record(phase, error):
+            self.result.setdefault('observation_reconnects', []).append(
+                dict(phase=phase, error=type(error).__name__, at=time.time()))
+            self.save()
+        return read_with_reconnect(operation, self.reconnect, timeout=60,
+                                   retry_errors=(OSError, EOFError, paramiko.SSHException), on_retry=record)
 
     def read(self, text):
         value = self.run(text)
@@ -88,7 +100,7 @@ class PrivateTest:
     def dispatch(self, name, text):
         self.result['dispatches'].append({'name': name, 'command': text, 'at': time.time()})
         self.save()
-        return self.run(text)  # Never retry a launch, signal or load after a lost reply.
+        return command(self.client, text)  # Never retry a launch, signal or load after a lost reply.
 
     def core(self):
         return self.run('cat /tmp/CORENAME').strip()
@@ -130,6 +142,9 @@ class PrivateTest:
         return {path: self.run('sha256sum -- ' + shlex.quote('/media/fat/' + path)).split()[0] for path in names}
 
     def argv(self, pid):
+        return self.read_operation(lambda: self._argv(pid))
+
+    def _argv(self, pid):
         try:
             with self.client.open_sftp() as sftp:
                 with sftp.open('/proc/' + str(pid) + '/cmdline', 'rb') as stream:
@@ -168,6 +183,9 @@ class PrivateTest:
         return text[text.rfind(')') + 2:].split()[19]
 
     def cache(self, path):
+        return self.read_operation(lambda: self._cache(path))
+
+    def _cache(self, path):
         try:
             with self.client.open_sftp() as sftp:
                 with sftp.open(path, 'rb') as stream:
@@ -226,6 +244,13 @@ def idle_child(argv):
     return not argv or (len(argv) == 2 and PurePosixPath(argv[0]).name == 'sleep' and argv[1] == '1')
 
 
+def schedule(frontends, cycles):
+    assert 1 <= cycles <= 16 and frontends and len(set(frontends)) == len(frontends)
+    assert all(frontend in ('player', 'studio') for frontend in frontends)
+    return [(frontend, frontend if cycles == 1 else f'{frontend}-{cycle:02d}')
+            for cycle in range(cycles) for frontend in frontends]
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--candidate', type=Path, required=True)
@@ -234,8 +259,23 @@ def main():
     parser.add_argument('--evidence', type=Path, required=True)
     parser.add_argument('--initial-core', choices=('MENU', 'PICO-8'), required=True)
     parser.add_argument('--host', default='192.168.1.176')
+    parser.add_argument('--cycles', type=int, default=1)
+    parser.add_argument('--frontends', nargs='+', choices=('player', 'studio'), default=['player', 'studio'])
+    parser.add_argument('--music-fixtures', type=Path,
+                        help='Run the private music/clock/resource soak instead of the mouse probe')
+    parser.add_argument('--soak-seconds', type=int, default=600)
+    parser.add_argument('--lifecycle-only', action='store_true',
+                        help='Use private music fixtures for genuine Main reloads and Studio working-copy Save')
+    parser.add_argument('--lifecycle-reloads', type=int, default=4)
+    parser.add_argument('--keyboard-build', type=Path)
     args = parser.parse_args()
+    assert 10 <= args.soak_seconds <= 3600
+    assert 1 <= args.lifecycle_reloads <= 16
+    assert not args.lifecycle_only or (args.music_fixtures and args.keyboard_build)
+    gate_name = 'lifecycle_gate_passed' if args.lifecycle_only else 'music_gate_passed' if args.music_fixtures else 'api_gate_passed'
+    sequence = schedule(args.frontends, args.cycles)
     args.evidence.mkdir()
+    (args.evidence / 'original-driver.py').write_bytes(Path(__file__).read_bytes())
     sha = lambda path: hashlib.sha256(path.read_bytes()).hexdigest()
     manifest = json.loads((args.candidate / 'manifest.json').read_text())
     assert manifest['shared_Main_payload_included'] is False and manifest['expected_stock_Main_sha256'] == STOCK
@@ -248,11 +288,26 @@ def main():
     reader = json.loads((args.reader_evidence / 'result.json').read_text())
     assert reader['passed'] and reader['restored_verified'] and reader['original_probe_exit'] == 0
     assert reader['probe_sha256'] == manifest['probe_sha256']
+    music = None
+    if args.music_fixtures:
+        music = json.loads((args.music_fixtures / 'result.json').read_text())
+        assert music['passed']
+        assert sha(args.music_fixtures / 'music.tic') == music['cartridge_sha256']
+        assert sha(args.music_fixtures / 'runtime-monitor') == music['monitor_sha256']
+        for name, digest in music['sources'].items(): assert sha(ROOT / name) == digest
+    keyboard = None
+    if args.lifecycle_only:
+        keyboard = json.loads((args.keyboard_build / 'result.json').read_text())
+        assert keyboard['passed'] and sha(ROOT / 'tools/studio_keyboard_probe.c') == keyboard['source_sha256']
+        assert sha(args.keyboard_build / 'keyboard-probe') == keyboard['binary_sha256']
     for path, item in manifest['files'].items():
         assert sha(args.candidate / 'candidate' / path) == item['candidate_sha256'], path
         assert sha(args.candidate / 'rollback' / path) == item['rollback_sha256'], path
     client = paramiko.SSHClient(); client.load_system_host_keys()
-    test = PrivateTest(client, args.evidence); r = test.result
+    def reconnect():
+        client.close()
+        connect(client, args.host, username='root', password=os.environ['TM_SSH_PASSWORD'], timeout=25)
+    test = PrivateTest(client, args.evidence, reconnect=reconnect); r = test.result
     ident = uuid.uuid4().hex
     remote = '/tmp/tic80-hid-api-' + ident
     stage = '/media/fat/.tic80-hid-api-' + ident
@@ -261,6 +316,24 @@ def main():
     r['source_sha256'] = {name: sha(ROOT / name) for name in ('tools/test_hid_frontends_native.py', 'tools/hid_frontend_probe.c', 'tests/test_native_frontend_oracle.py')}
     r['candidate_payloads'] = manifest['files']
     r['probe_sha256'] = probe_receipt['ARM_probe_sha256']
+    r['schedule'] = sequence
+    if music:
+        r['scope'] = 'Privately staged default player/Studio: stock-Main music, audio/raster clocks, pmem and interpreter resources'
+        r['music_fixtures'] = music
+        r['source_sha256']['tools/native_music_soak.py'] = sha(ROOT / 'tools/native_music_soak.py')
+    if args.lifecycle_only:
+        r['scope'] = 'Private default frontends: genuine stock-Main reloads, native/PNG switches, empty source metadata and Studio working-copy Save'
+        r['source_sha256']['tools/native_frontend_lifecycle.py'] = sha(ROOT / 'tools/native_frontend_lifecycle.py')
+        r['keyboard_probe'] = keyboard
+    r['diagnostic_reset_trace'] = bool(manifest.get('diagnostic_reset_trace'))
+    if r['diagnostic_reset_trace']:
+        r['scope'] = 'Diagnostic reset-trace player; synthetic mouse API/real OSD reproduction, not default binary qualification'
+    for name, digest in r['source_sha256'].items():
+        original = (ROOT / name).read_bytes()
+        assert hashlib.sha256(original).hexdigest() == digest
+        frozen = args.evidence / 'sources' / name
+        frozen.parent.mkdir(parents=True, exist_ok=True)
+        frozen.write_bytes(original)
     connected = switched = paused = False
     daemon = daemon_birth = restore = None
     current_pid = current_cart = current_frontend = current_mgl = None
@@ -316,21 +389,39 @@ def main():
             for name, path in payloads.items():
                 sftp.put(str(args.candidate / 'candidate' / path), stage + '/' + name)
             sftp.put(str(probe), stage + '/probe')
+            if music: sftp.put(str(args.music_fixtures / 'runtime-monitor'), stage + '/monitor')
+            if keyboard: sftp.put(str(args.keyboard_build / 'keyboard-probe'), stage + '/keyboard')
         for name, path in payloads.items():
             assert test.run('sha256sum ' + stage + '/' + name).split()[0] == manifest['files'][path]['candidate_sha256']
         assert test.run('sha256sum ' + stage + '/probe').split()[0] == probe_receipt['ARM_probe_sha256']
+        if music:
+            assert test.run('sha256sum ' + stage + '/monitor').split()[0] == music['monitor_sha256']
+            test.dispatch('private-monitor-mode', 'chmod 755 ' + stage + '/monitor')
+        if keyboard:
+            assert test.run('sha256sum ' + stage + '/keyboard').split()[0] == keyboard['binary_sha256']
+            test.dispatch('private-keyboard-mode', 'chmod 755 ' + stage + '/keyboard')
         test.dispatch('private-executable-modes', 'chmod 755 ' + stage + '/TIC-80 ' + stage + '/TIC-80-Studio ' + stage + '/probe')
         for name in ('TIC-80', 'TIC-80-Studio', 'probe'):
             libraries = test.run('/lib/ld-linux-armhf.so.3 --list ' + stage + '/' + name)
             assert 'not found' not in libraries
             (args.evidence / (name + '-libraries.log')).write_text(libraries)
-        for frontend in ('player', 'studio'):
-            saveid = 'tic80-hid-api-' + ident + '-' + frontend
+        for frontend, label in sequence:
+            saveid = 'tic80-hid-api-' + ident + '-' + label
             cart = cartridge(saveid)
-            cart_path = remote + '/' + frontend + '.tic'
+            if music:
+                saveid = music['saveid'][:-32] + hashlib.md5((ident + label).encode()).hexdigest()
+                original = music['saveid'].encode()
+                cart = (args.music_fixtures / 'music.tic').read_bytes()
+                assert len(original) == len(saveid.encode()) and cart.count(original) == 1
+                cart = cart.replace(original, saveid.encode())
+            cart_path = remote + '/' + label + '.tic'
             save_path = remote + '/saves/' + hashlib.md5(saveid.encode()).hexdigest() + '.pmem'
-            mgl_path = remote + '/' + frontend + '.mgl'
+            mgl_path = remote + '/' + label + '.mgl'
             current_mgl = mgl_path
+            project_folder = remote + '/projects'
+            if args.lifecycle_only:
+                project_folder += '/' + label
+                test.dispatch('private-project-folder:' + label, 'mkdir ' + project_folder)
             mgl = ('<mistergamedescription>\n <rbf>.tic80-hid-api-' + ident + '/TIC80</rbf>\n' +
                    f' <file delay="3" type="f" index="0" path="{cart_path}"/>\n</mistergamedescription>\n')
             with client.open_sftp() as sftp:
@@ -346,7 +437,7 @@ def main():
                     current_cart = values[1:]; break
                 assert time.monotonic() < deadline, values
                 time.sleep(.2)
-            r.setdefault('cycles', []).append({'frontend': frontend, 'main_pid': current_pid, 'cart': current_cart,
+            r.setdefault('cycles', []).append({'frontend': frontend, 'label': label, 'main_pid': current_pid, 'cart': current_cart,
                                               'saveid': saveid, 'cart_sha256': hashlib.sha256(cart).hexdigest()})
             test.save()
             # Read automatic CTS repeatedly before launching the runtime.
@@ -354,20 +445,23 @@ def main():
             clock = test.run('for n in 1 2; do for r in ' + registers + '; do printf "%s " "$r"; i2cget -y 1 0x39 "$r" b || exit 32; done; sleep .25; done').splitlines()
             assert len(clock) == 26
             r['cycles'][-1]['hdmi'] = analyze([{'registers': dict(line.split() for line in clock[n:n+13])} for n in (0, 13)])
-            active_probe = remote + '/' + frontend + '-probe'
-            active_frontend = remote + '/' + frontend + '-frontend'
-            ready = active_probe + '.ready'; pid_path = active_frontend + '.pid'
-            test.job(active_probe, 'taskset 1 nice -n 19 ' + stage + '/probe --frontend ' + current_pid + ' ' +
-                     save_path + ' ' + ready + ' ' + pid_path + ' > ' + active_probe + '.jsonl 2> ' + active_probe + '.stderr')
-            deadline = time.monotonic() + 25
-            while not test.run('test -f ' + ready + ' && echo ready || true').strip():
-                assert test.core() == 'TIC-80' and test.main_pid() == current_pid
-                assert time.monotonic() < deadline, 'Original probe did not become ready'
-                time.sleep(.2)
+            active_probe = None if args.lifecycle_only else remote + '/' + label + ('-monitor' if music else '-probe')
+            active_frontend = remote + '/' + label + '-frontend'
+            ready = active_probe + '.ready' if active_probe else None
+            pid_path = active_frontend + '.pid'
+            if not music:
+                test.job(active_probe, 'taskset 1 nice -n 19 ' + stage + '/probe --frontend ' + current_pid + ' ' +
+                         save_path + ' ' + ready + ' ' + pid_path + ' > ' + active_probe + '.jsonl 2> ' + active_probe + '.stderr')
+                deadline = time.monotonic() + 25
+                while not test.run('test -f ' + ready + ' && echo ready || true').strip():
+                    assert test.core() == 'TIC-80' and test.main_pid() == current_pid
+                    assert time.monotonic() < deadline, 'Original probe did not become ready'
+                    time.sleep(.2)
             program = stage + ('/TIC-80' if frontend == 'player' else '/TIC-80-Studio')
             expected = manifest['files']['games/TIC-80/TIC-80' + ('' if frontend == 'player' else '-Studio')]['candidate_sha256']
-            arguments = (' --serve ' + remote + '/saves --ticks 7200') if frontend == 'player' else (
-                ' --folder ' + remote + '/projects --saves ' + remote + '/saves --ticks 7200')
+            tick_limit = (args.soak_seconds + 120) * 60 if music else 7200
+            arguments = (' --serve ' + remote + '/saves --ticks ' + str(tick_limit)) if frontend == 'player' else (
+                ' --folder ' + project_folder + ' --saves ' + remote + '/saves --ticks ' + str(tick_limit))
             # Match the installed handler: each production frontend selects
             # its own CPU and scheduling policy after startup.
             launch = (program + arguments + ' > ' + active_frontend + '.log 2>&1 &\n'
@@ -380,21 +474,39 @@ def main():
             frontend_identity = test.frontend_identity(current_frontend, expected)
             r['cycles'][-1]['frontend_identity'] = frontend_identity
             r['cycles'][-1]['frontend_pid'] = current_frontend; test.save()
-            status = test.collect(active_probe, 180)
-            stdout = test.run('cat ' + active_probe + '.jsonl'); stderr = test.run('cat ' + active_probe + '.stderr')
-            (args.evidence / (frontend + '-probe.jsonl')).write_text(stdout)
-            (args.evidence / (frontend + '-probe.stderr')).write_text(stderr)
-            assert status == 0, stderr
-            rows = validate_rows(stdout, current_pid, current_frontend)
-            r['cycles'][-1]['api_passed'] = True; r['cycles'][-1]['probe_summary'] = rows[-1]; test.save()
+            if music:
+                if args.lifecycle_only:
+                    from native_frontend_lifecycle import run_lifecycle
+                    active_probe = None
+                    def update_lifecycle(path):
+                        nonlocal current_mgl, current_pid, current_cart
+                        current_mgl = path; current_pid = current_cart = None
+                    summary = run_lifecycle(test, args, stage, remote, label, cart, save_path,
+                                            frontend_identity, frontend, update_lifecycle)
+                    current_pid = summary['last']['main_pid']; current_cart = summary['last']['cart']
+                    r['cycles'][-1]['lifecycle_summary'] = summary
+                    r['cycles'][-1]['lifecycle_passed'] = True; test.save()
+                else:
+                    from native_music_soak import run_soak
+                    r['cycles'][-1]['soak_summary'] = run_soak(test, args, stage, active_probe, save_path,
+                                                              frontend_identity, current_pid, current_mgl, frontend)
+                    r['cycles'][-1]['soak_passed'] = True; test.save()
+            else:
+                status = test.collect(active_probe, 180)
+                stdout = test.run('cat ' + active_probe + '.jsonl'); stderr = test.run('cat ' + active_probe + '.stderr')
+                (args.evidence / (label + '-probe.jsonl')).write_text(stdout)
+                (args.evidence / (label + '-probe.stderr')).write_text(stderr)
+                assert status == 0, stderr
+                rows = validate_rows(stdout, current_pid, current_frontend)
+                r['cycles'][-1]['api_passed'] = True; r['cycles'][-1]['probe_summary'] = rows[-1]; test.save()
             assert test.core() == 'TIC-80' and test.main_pid() == current_pid
             test.stop_frontend(frontend_identity, 'stop-own-' + frontend)
             assert test.collect(active_frontend, 20) == 0
-            (args.evidence / (frontend + '-frontend.log')).write_text(test.run('cat ' + active_frontend + '.log'))
+            (args.evidence / (label + '-frontend.log')).write_text(test.run('cat ' + active_frontend + '.log'))
             current_frontend = frontend_identity = None; active_frontend = active_probe = None
             test.load('/media/fat/menu.rbf', 'TIC-80'); test.wait_core('MENU', allowed)
             current_pid = current_cart = None
-        r['api_gate_passed'] = True
+        r[gate_name] = True
     except BaseException as error:
         r['error'] = type(error).__name__ + ': ' + str(error); test.save(); raise
     finally:
@@ -455,7 +567,8 @@ def main():
                     test.load(restore, 'MENU'); test.wait_core(args.initial_core, allowed)
                 test.main_pid(); r['final_core'] = test.core(); assert r['final_core'] == args.initial_core
                 assert test.snapshot(protected) == r['before']
-                r['restored_verified'] = True; r['passed'] = bool(r.get('api_gate_passed'))
+                r['restored_verified'] = True
+                r['passed'] = bool(r.get(gate_name))
         except BaseException as error:
             r['restoration_error'] = type(error).__name__ + ': ' + str(error); test.save(); raise
         finally:

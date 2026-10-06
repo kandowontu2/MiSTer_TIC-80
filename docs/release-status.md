@@ -31,6 +31,23 @@ oracle. See `build/studio-reload-oracle-v5-20261006/result.json` and
 [standard-Main compatibility](stock-main.md) for its scope. This is local
 runtime evidence, with no MiSTer access or installed/published payload changes.
 
+Later private native checks pass on stock Main for candidate RBF `5595ba32`
+and Studio `baf2b1fc`: actual horizontal `mouse()` API/OSD behavior and a
+ten-minute automated music/resource soak. Player `930e7531` adds bounded
+reconfiguration recovery. Both default frontends now pass four actual RBF
+reloads, native/modern/legacy PNG MGL transfers and active audio after each;
+Studio also passes private working-copy and established-file editing/Save.
+The original jobs and independent restoration review are recorded in
+`build/private-lifecycle-native-v7-20261006` and
+`build/private-lifecycle-native-review-v7-20261006`.
+These candidate payloads remain private. The earlier intermittent OSD failure
+and a later statistics-marker rejection remain preserved and unreproduced;
+four fresh native mouse/OSD cycles and a ten-minute music/resource soak
+now pass for the new player, with zero measured underruns and BOOT=1.
+Human picture/stereo confirmation of this exact player is still pending. See [standard-Main compatibility](stock-main.md) for exact binary
+hashes, test scope and original failures. Historical prototype confirmations
+below do not count as human confirmation of this candidate.
+
 ## Historical prototype qualification
 
 Matched build `18de1e89` was previously installed in the normal SD-card

@@ -381,6 +381,167 @@ unchanged by these development tools.
 
 A separate player with compile-time reset tracing is prepared in
 `build/hid-frontends-trace-v1-20261006` for investigating v4. Its target ABI,
-backend/input and dispatch checks pass. That diagnostic player has not been
-tested on hardware and is explicitly ineligible for release or qualification
+backend/input and dispatch checks pass. Its subsequent private hardware run is
+described below; it remains explicitly ineligible for release or qualification
 of the default production binary.
+
+## Live output recovery and current native checks
+
+Eight cold player cycles using the separate reset-trace diagnostic pass the
+real mouse/OSD sequence (`build/hid-frontends-native-trace-v6-20261006`). Its
+read-only restoration review also passes. These cycles did not reproduce the
+original v4 failure and do not qualify the default player binary.
+
+A separate reproducible recovery defect is now fixed in both default
+frontends. A foreign video acknowledgement or impossible audio read counter
+can fail output while FPGA identity, session acknowledgement and Main's
+generation still match. The former player treated that as a Main reload and
+waited for an initialization event that never came; Studio exited. The new
+paths flush only their own transport and retain the running interpreter. An
+actual lost FPGA session still goes through the existing initialization/reset
+guard. Wheel totals are re-baselined, including the cached input fallback
+while the FPGA input snapshot is incoherent; the legacy FPGA counter is kept.
+
+The original failing regressions are preserved in
+`build/output-recovery-before-v1-20261006` and
+`build/studio-output-recovery-before-v1-20261006`. The default rebuild is
+`build/hid-frontends-v7-20261006`; player SHA-256 is
+`23346d3c41bbdac7b3c199e9ec24bb4d3577c313f1063ca2c91edbf0f7834db6`,
+Studio SHA-256 is
+`baf2b1fc6ec1a1af5e35a88872da3e9f1cbcae21a2362545e58979cfa8b4cb01`.
+Seventeen registered ARM/QEMU recovery, initialization, held-reset and reload
+checks pass against those exact binaries, including BOOT=1 and unchanged
+interpreter PID after the injected live-output faults
+(`build/output-recovery-final-v1-20261006`). Sixteen further registered
+live/OSD/dialog/selection/reset/PNG/worker-fault regressions pass
+(`build/frontend-integration-current-v1-20261006`). None uses MiSTer hardware.
+
+Four cold hardware cycles per default frontend also pass all nine real
+horizontal mouse API/OSD stages on the prepared RBF
+(`build/hid-frontends-native-v8-20261006`). The original sixteen probe/frontend
+jobs exit zero. Studio records zero output flushes in these healthy runs.
+Their independent read-only review verifies PICO-8 restoration, stock Main,
+protected hashes, source caches, Frontier and the 4,377 cartridge metadata
+entries (`build/hid-frontends-native-review-v8-20261006`). Frozen copies of
+the original driver and oracle preserve the exact test sources. This remains
+a synthetic horizontal-axis check, not fresh physical input or audible output
+qualification.
+
+The reproducible output-contract defect is not proof of the original v4
+failure's cause. That original failure remains recorded and unreproduced.
+Candidate `build/hid-native-candidate-v6-20261006` is privately staged;
+installed payloads, the shared Main executable and the public release remain
+unchanged. Its broader native music, lifecycle and source-save checks are
+recorded separately when complete.
+
+## Native music and reconfiguration checks
+
+Both default v7 frontends complete separate ten-minute music runs with the
+prepared RBF (`build/private-music-native-v1-20261006`). Each retains its
+original interpreter and BOOT=1, records zero audio underruns, and passes the
+resource plateau checks. Measured audio clocks are approximately 47,999.25 Hz
+and presentation is approximately 59.9988 frames/s. Fitted queue changes are
+-0.118 ms for the player and -0.141 ms for Studio over ten minutes. The
+read-only review verifies original job statuses and restoration, protected
+files, source caches, Frontier and cartridge metadata
+(`build/private-music-native-review-v1-20261006`). These measurements qualify
+those exact binaries' automated music checks; audible stereo and visible HDMI
+quality still require a human observation of the tested build.
+
+A later private test exposes a separate player reconfiguration failure:
+the first raw RBF reload resumes neither the original player nor its cartridge
+(`build/private-lifecycle-native-v1-20261006`). Main can reset the bridge for
+longer than one transport handshake, and the newly configured FPGA first
+captures a stale DDR session request. The player now retries its own transport
+for at most ten seconds while TIC-80 remains explicitly selected. Another or
+unknown core ends the wait, SIGTERM remains a clean exit, and a cartridge
+already transferred during reconfiguration takes priority over the cached
+cartridge. No ticks run while transport is unavailable. This change does not
+establish the cause of the earlier intermittent v4 OSD failure.
+
+The latest default player SHA-256 is
+`930e7531e510c80aacc52fb6e8c3309e36d04b00d7746976da976a6507158eb8`
+(`build/hid-frontends-v9-20261006`); Studio remains the v7 binary above.
+Eleven registered ARM/QEMU checks pass against this player, covering lifecycle,
+held reset, Main initialization, six reconfiguration scenarios and both live
+output faults (`build/player-reconfiguration-after-v3-20261006`). The firmware
+fixture preserves the RTL's sticky session-arm behavior, including after a
+zero request; earlier failed fixture and regression receipts remain available.
+This is local validation, not native reconfiguration qualification.
+
+The native lifecycle driver exercises actual stock-Main RBF reloads and
+native/modern/legacy PNG transfers, then Studio editing and Save into private
+working copies. Its original v2 Studio and diagnostic v3 player runs resume
+after their first raw reload but fail an incorrect test expectation that the
+ARM-owned cartridge acknowledgement clears across FPGA reconfiguration.
+The corrected oracle permits that previous acknowledgement when Main has not
+transferred another cartridge. Those original failures remain recorded.
+
+The default player's original v4 lifecycle run resumes through three raw
+reloads, reaching BOOT=4. The third reload's monitor records 39 normal samples
+before reporting "Matching hardware statistics unavailable". The player
+remains alive and exits cleanly during restoration; this does not establish
+why the monitor rejected identity or statistics magic. A read-only follow-up
+retains the failed monitor's original output. The monitor now reports the exact
+failing register values without retrying or accepting that snapshot, and the
+driver saves monitor output before checking its exit status.
+
+The original v5 attempt loses SSH during observation after its first raw
+reload. A new read-only connection finds the original player running and
+restarted once. Separate guarded restoration verifies PICO-8, stock Main,
+protected files, source caches, Frontier and all 4,377 cartridge metadata
+entries (`build/private-lifecycle-restoration-v6-20261006`). The original
+coordinator failure is preserved. Subsequent read-only observations may
+reconnect within a bounded budget; mutations and original jobs are never
+redispatched after a lost reply.
+
+Candidate `build/hid-native-candidate-v8-20261006` remains private and has not
+passed full qualification. The installed payloads and public release are
+unchanged. Current player native lifecycle, mouse/OSD and ten-minute music
+checks must be recorded against its new binary before they count for it;
+Studio's unchanged binary retains its existing mouse/OSD and music evidence.
+
+The original v6 lifecycle run passes cold startup and all four raw player
+reloads, retaining the original process with BOOT progressing from 1 through
+5 and active audio after each. It then observes the retained cartridge before
+Main's three-second MGL file delay has elapsed and fails the transfer oracle.
+The driver now assigns each replacement cartridge a separate save identity
+and waits for its own BOOT=1. PNG MGL actions use menu slot F0 (`index="0"`)
+and a `.png` filename; stock Main derives the transfer extension ordinal.
+These are test corrections, not changes to runtime or shared Main.
+The v6 monitor did not reproduce the earlier statistics-marker failure.
+
+The corrected native lifecycle run passes both exact default frontends
+(`build/private-lifecycle-native-v7-20261006`). Each cold start and four raw
+RBF reloads retains the original frontend, progresses BOOT from 1 to 5, and
+resumes measured audio without underruns. Native, modern PNG and legacy PNG
+MGL transfers each run the newly identified cartridge with BOOT=1 and the
+expected advancing acknowledgement. Studio's anonymous working-copy Save
+contains the requested code edit and leaves the original OSD cartridge
+unchanged. Console loading a private file followed by another editor Save
+updates that established file with the second edit. These synthetic keyboard
+actions do not qualify physical keyboard input. All twenty original jobs exit
+zero. A separate read-only review confirms restoration and all protected
+installation state (`build/private-lifecycle-native-review-v7-20261006`).
+Frozen source copies retain the original test driver and oracle. The earlier
+intermittent statistics-marker rejection remains unreproduced, with its
+original failure preserved; no installed or published payload is replaced.
+
+Four fresh native mouse/OSD cycles pass against the latest default player
+`930e7531` (`build/hid-frontends-native-v9-20261006`). Each completes all nine
+horizontal API stages with BOOT=1 and identical repeated `mouse()` results.
+The eight original frontend/probe jobs exit zero. The independent read-only
+review verifies the frozen test sources and protected installation/restoration
+state (`build/hid-frontends-native-review-v9-20261006`). These cycles do not
+reproduce the original intermittent OSD failure.
+
+The latest default player also completes a fresh ten-minute native music run
+(`build/private-music-native-v2-20261006`): 3,047 coherent samples over
+600.062 seconds, zero measured underruns, 47,999.246 Hz audio and
+59.998791 frames/s. Fitted audio queue change is -0.0173 ms. The original
+interpreter is retained, BOOT remains 1, sampled parent/worker RSS and
+descriptor counts stay flat, and the largest recorded game-tick gap is 31 ms.
+Both original jobs exit zero. The independent read-only review verifies
+samples, resources, saves, frozen sources and protected restoration state
+(`build/private-music-native-review-v2-20261006`). The optional human
+picture/stereo confirmation for this exact player is still pending.

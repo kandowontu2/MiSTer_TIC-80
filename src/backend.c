@@ -184,6 +184,9 @@ int tm_backend_start(tm_backend *b)
     b->session = nonce;
     tm_hid_wheel_close(b->hid_wheel);
     b->hid_wheel = NULL;
+    // The replacement Linux reader starts its total at zero. A temporarily
+    // incoherent FPGA snapshot must not return the old reader's cached total.
+    if (b->inputs.mouse_gate & 8192u) b->inputs.horizontal_wheel = 0;
     /* The session ACK and cleared presented word are separate DDR writes. */
     limit = now_ms() + 1000;
     while (identity_ok(b) && (read_reg(b, TM_VIDEO_PRESENTED_OFFSET) != 0 || read_reg(b, TM_AUDIO_READ_OFFSET) != 0)

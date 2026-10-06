@@ -4,6 +4,8 @@ from pathlib import Path
 import sys
 import types
 import unittest
+from unittest.mock import patch
+import zlib
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'tools'))
 try:
     import paramiko
@@ -11,8 +13,9 @@ except ModuleNotFoundError as error:
     if error.name != 'paramiko': raise
     def no_network():
         raise AssertionError('An offline test attempted a real SSH connection')
-    sys.modules['paramiko'] = types.SimpleNamespace(SSHClient=no_network)
-from test_hid_frontends_native import PrivateTest, STAGES, idle_child, validate_rows, cartridge
+    sys.modules['paramiko'] = types.SimpleNamespace(SSHClient=no_network, SSHException=ConnectionError)
+from test_hid_frontends_native import PrivateTest, STAGES, idle_child, validate_rows, cartridge, schedule
+from native_frontend_lifecycle import code, switch_payload
 
 
 def receipt():
@@ -28,6 +31,45 @@ def receipt():
 
 
 class NativeOracle(unittest.TestCase):
+    def test_switch_cannot_accept_retained_cartridge_boot(self):
+        original = cartridge('music-private-' + 'a'*32)
+        identities = []
+        for kind in ('native', 'modern', 'legacy'):
+            native, payload, extension, saveid = switch_payload(original, kind)
+            self.assertEqual(len(native), len(original))
+            self.assertIn(saveid.encode(), code(native))
+            self.assertNotIn(b'music-private-' + b'a'*32, code(native))
+            self.assertEqual(extension, 'tic' if kind == 'native' else 'png')
+            self.assertTrue(payload == native if kind == 'native' else payload.startswith(b'\x89PNG'))
+            identities.append(saveid)
+        self.assertEqual(len(set(identities)), 3)
+
+    def test_lost_mutation_reply_never_reconnects_or_redispatches(self):
+        test = PrivateTest(None, None, reconnect=lambda: self.fail('Mutation must not reconnect'))
+        test.save = lambda: None
+        with patch('test_hid_frontends_native.command', side_effect=ConnectionResetError('lost reply')) as command:
+            with self.assertRaises(ConnectionResetError): test.dispatch('original-load', 'one mutation')
+        command.assert_called_once_with(None, 'one mutation')
+        self.assertEqual(len(test.result['dispatches']), 1)
+
+    def test_read_disconnect_reconnects_without_dispatch(self):
+        reconnects = []
+        test = PrivateTest(None, None, reconnect=lambda: reconnects.append('connected'))
+        test.save = lambda: None
+        with patch('hardware_ssh.time.sleep'), patch('test_hid_frontends_native.command',
+                side_effect=[ConnectionResetError('lost read'), 'original status']) as command:
+            self.assertEqual(test.run('read original status'), 'original status')
+        self.assertEqual(reconnects, ['connected'])
+        self.assertEqual(command.call_count, 2)
+        self.assertEqual(test.result['dispatches'], [])
+
+    def test_repeated_cycles_have_unique_save_and_job_labels(self):
+        self.assertEqual(schedule(['player','studio'],1),[('player','player'),('studio','studio')])
+        selected = schedule(['player','studio'],16)
+        self.assertEqual(len(selected),32)
+        self.assertEqual(len({label for _,label in selected}),32)
+        for cycles,frontends in ((0,['player']),(17,['player']),(1,[]),(1,['player','player']),(1,['unknown'])):
+            with self.assertRaises(AssertionError): schedule(frontends,cycles)
     def check(self, rows):
         return validate_rows('\n'.join(map(json.dumps, rows)), '42', '43')
 
@@ -75,6 +117,19 @@ class NativeOracle(unittest.TestCase):
         self.assertEqual(int.from_bytes(data[1:3],'little'),len(data)-4)
         self.assertIn(b'-- saveid: unique-save', data)
         self.assertEqual(data.count(b'=mouse()'),2)
+
+    def test_editor_save_requires_the_actual_changed_code(self):
+        original = cartridge('unique-save')
+        expected = code(original) + b' '
+        text = code(original)
+        encoded = bytes([5]) + (len(text)+1).to_bytes(2,'little') + b'\0' + text + b' '
+        self.assertEqual(code(encoded), expected)
+        self.assertNotEqual(code(original), expected)
+        compressed = zlib.compress(text + b' ')
+        zipped = bytes([16]) + len(compressed).to_bytes(2,'little') + b'\0' + compressed
+        self.assertEqual(code(zipped), expected)
+        for corrupt in (original[:3], original[:-1], b'\x05\xff\xff\0x'):
+            with self.assertRaises(AssertionError): code(corrupt)
 
     def test_terminal_journal_published_during_liveness_read(self):
         test = PrivateTest(None, None)
