@@ -92,6 +92,19 @@ remain pending; the latest inventory detects only the virtual keyboard. No
 candidate payload is installed or published by these tests. See
 [standard-Main compatibility](stock-main.md) for exact receipts and scope.
 
+The same exact current binaries now pass 84 integrated stock-Main cartridge
+loads: fourteen languages, three cartridge formats and both frontends. Each
+case verifies every byte of the actual FPGA-received cartridge, every RGB
+channel in the full native scaler screenshot, active audio with zero measured
+underruns, and the continued identity of the original frontend process. All
+338 original frontend/measurement jobs exit 0. Independent read-only review
+confirms normal installed-Studio restoration, unchanged protected files and
+games-folder metadata, restored source caches and resumed Frontier. This closes
+the integrated language/format matrix gate; physical controls, human output
+confirmation of these exact binaries, remaining recovery checks and final
+release acceptance remain open. The installed preview and public release are
+unchanged. See [standard-Main compatibility](stock-main.md) for the receipts.
+
 ## Historical prototype qualification
 
 Matched build `18de1e89` was previously installed in the normal SD-card

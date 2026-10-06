@@ -723,3 +723,42 @@ default. These ZIPs remain private; the published release and installed
 payloads are unchanged. Current-binary human picture/stereo confirmation and
 physical controls are still pending. Linux's latest physical inventory contains
 only MiSTer's virtual keyboard; no human input is injected or credited.
+
+### October 6: integrated stock-Main cartridge matrix
+
+The same exact player `2a03b849`, Studio `e3613638` and RBF `5595ba32` now
+pass all 84 actual stock-Main MGL cartridge loads: fourteen languages in native
+TIC, modern PNG and legacy PNG formats, through both default frontends. This
+exercises Main's file transfer, the FPGA mailbox, the retained frontend,
+interpreter execution and native scaler output together. It complements the
+earlier direct-worker checks, which did not map FPGA memory.
+
+For every case, a read-only, session-bound DDR snapshot matches every received
+cartridge byte to the selected fixture, with the correct ticket, size and ACK.
+This matters because different language demos can produce the same picture.
+The stock-Main screenshot matches every RGB channel of the full 256 by 144
+image to a frozen reference pose. These comparisons cover RGB, not alpha or
+the TV's physical HDMI presentation. Each original frontend survives all 42
+loads without a changed process identity. Each case also has a two-second
+audio/frame monitor with at least 100 samples, active playback and zero
+underruns. These bounded monitors complement the earlier ten-minute soaks;
+they are not another sustained-playback test or a PCM comparison.
+
+All 338 original frontend and measurement jobs terminate with exit 0. The
+independent review rechecks the 84 raw payloads, 84 screenshots, monitor logs,
+fixture/reference manifests and source hashes. It also verifies restoration
+of normal installed Studio, all nine protected files, 4,377 games-folder
+metadata rows, source caches and Frontier. Only fresh UUID-named test
+screenshots were removed after their hashes were checked; existing screenshots
+were preserved. Receipts are `build/stock-main-matrix-native-v1-20261006`,
+`build/stock-main-matrix-review-v1-20261006` and
+`build/stock-main-matrix-owner-v1-20261006`.
+
+The payload snapshot helper passes host and ARM/QEMU negative and read-only
+checks in `build/cart-payload-snapshot-v2-20261006`. The original v1 ARM build's
+signed-size compiler failure remains preserved. The matrix oracle also has
+five local regression tests, including wrong delivered language bytes despite
+an identical picture, wrong ACK/size/source metadata and a mismatched final
+RGB pixel. No production binary changed during this matrix work. Current
+physical controls, human picture/stereo confirmation, remaining recovery
+checks and final release acceptance remain open; full qualification is false.
