@@ -762,3 +762,54 @@ an identical picture, wrong ACK/size/source metadata and a mismatched final
 RGB pixel. No production binary changed during this matrix work. Current
 physical controls, human picture/stereo confirmation, remaining recovery
 checks and final release acceptance remain open; full qualification is false.
+
+### October 6: native bad-cartridge and worker recovery
+
+The same exact default player `2a03b849` and Studio `e3613638`, private RBF
+`5595ba32` and official stock Main `9f6e5a23` pass eight recovery actions each.
+Actual MGL transfers exercise an empty cartridge, invalid PNG and first-tick
+runaway code. A later runaway tick deliberately writes `9999` into persistent
+memory before hanging; both frontends save only the last completed value, `2`.
+The suite then loads a healthy cartridge, kills its verified private worker,
+verifies that worker is reaped, and loads another healthy cartridge. Each
+original parent survives the entire cycle. Worker signals are restricted by
+core selection, executable hash, process birth and parent identity.
+
+The two frontends have different recovery workflows. Player rejects all three
+bad candidates and resumes its retained game without an extra BOOT. Studio
+resumes after the short transfer, retains the old cartridge after a failed PNG
+selection and runs it successfully with explicit Ctrl+R. Runaway code selected
+in Studio can fail during Run; its worker recovers to a usable Studio session,
+after which the prior healthy cartridge loads and runs again. The synthetic
+Ctrl+R helper exercises Main's normal input path and releases its keys; it does
+not qualify a physical keyboard.
+
+Independent read-only review collects eight original, stable save files after
+the private frontends exit. Their lengths, versions, CRCs, BOOT counters and
+completed-tick values pass. Twelve two-second playback/frame monitors pass
+with zero observed underruns after the relevant recoveries. These monitors do
+not measure audible continuity during the injected failures. All nineteen
+remote frontend/monitor/signal jobs from the reviewed runs have terminal exit
+0. Protected files, 4,377 games-folder metadata rows, source caches and Frontier
+are preserved; installed Studio is restored normally and no private frontend
+remains running.
+
+The first test attempt incorrectly required a ready ticket for an empty
+transfer; the FPGA correctly publishes an error ticket for fewer than four
+bytes. The second attempt completed Player's cycle but expected Studio's
+selection-rejection log for that transfer, whose actual log distinguishes
+transport rejection. Those original coordinator failures remain preserved in
+`build/stock-main-recovery-native-v1-20261006` and
+`build/stock-main-recovery-native-v2-20261006`. The complete Studio run is
+`build/stock-main-recovery-native-v3-20261006`; its coordinator exits 0.
+`build/stock-main-recovery-review-v3-20261006` independently verifies the
+completed v2 Player cycle and complete v3 Studio cycle, explicitly retaining
+the partial v2 coordinator's failure. Restoration receipts are in the matching
+`stock-main-recovery-owner-v2-20261006` and `v3` directories.
+
+Four local oracle checks cover wrong short-transfer state/ACK/size/source,
+extra BOOT, insufficient progress and a partial hung-tick value. The fourteen
+existing native-oracle/cleanup checks also pass. No production binary or public
+release changed. Current-binary human output confirmation, physical controls
+and final release acceptance remain open; these finite cases do not establish
+universal fault or peripheral coverage.

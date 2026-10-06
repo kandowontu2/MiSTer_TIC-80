@@ -105,6 +105,20 @@ confirmation of these exact binaries, remaining recovery checks and final
 release acceptance remain open. The installed preview and public release are
 unchanged. See [standard-Main compatibility](stock-main.md) for the receipts.
 
+Current player `2a03b849` and Studio `e3613638` also pass sixteen native recovery
+actions covering empty transfers, invalid PNG, first-tick runaway code, a later
+runaway tick, worker termination and successful cartridge loading afterward.
+Player resumes its retained game after candidate rejection. Studio preserves
+its distinct workflow: explicit Run resumes the retained cartridge after an
+invalid selection, and another load succeeds after runaway-code recovery.
+Eight original saves pass independent CRC/counter review, with incomplete tick
+writes excluded. Twelve bounded playback monitors pass with zero underruns
+after recovery. Installed Studio and protected files are verified restored.
+Two earlier test-expectation failures remain preserved; the review combines
+the completed Player cycle from the partial v2 run with the complete Studio v3
+run. This is a finite recovery suite, not full release qualification. See
+[standard-Main compatibility](stock-main.md) for precise scope and receipts.
+
 ## Historical prototype qualification
 
 Matched build `18de1e89` was previously installed in the normal SD-card
