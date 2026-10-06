@@ -334,3 +334,53 @@ the current uninstrumented probe, the prepared FPGA, and exact published
 rollback files. It still marks full native qualification false: this reader
 test uses the published FPGA and directly supplied gate values, rather than
 the new FPGA's actual OSD epoch or the frontend's `mouse()` API.
+
+The subsequent private frontend fixture (`tools/hid_frontend_probe.c` and
+`tools/test_hid_frontends_native.py`) loads the candidate RBF and starts each
+unchanged production frontend outside the installed game folder. Four UHID
+mice and a UHID keyboard retain stock Main's exclusive evdev ownership. A Lua
+cartridge calls the real `mouse()` API twice per tick and records its results
+in CRC-protected persistent state; no private reader supplies these results.
+Win and F12 are sent in separate reports to establish Main's modifier state.
+The probe reads the real FPGA OSD-open bit and requires exactly one epoch
+increment at both opening and closing. It never writes the OSD gate.
+
+The player and Studio both complete the nine horizontal scrolling stages in
+`build/hid-frontends-native-v5-20261006`: coarse directions, fine fractions,
+complete fine notches, blocked feature-query isolation, suppression during
+OSD, suppression of its backlog, and cleared fractions after OSD. Both finish
+at API pan total -5 with BOOT=1 and no differing repeated `mouse()` calls.
+Their HDMI transmitter measurements infer 74.25 MHz at 720p/60. These are
+synthetic-device horizontal API/OSD checks, not qualification of every mouse
+field, physical peripherals, audio quality or a sustained soak.
+
+The v5 coordinator originally reports failure because its liveness check races
+the completed Studio job's terminal journal. All four original jobs have exit
+status zero. A separate read-only review validates both original probe logs,
+their terminal statuses, restoration to the original PICO-8 RBF, resumed
+Frontier, removed virtual inputs, protected file hashes, source caches and
+all 4,377 cartridge metadata entries (`build/hid-frontends-native-review-v5-20261006`).
+The coordinator result remains unchanged. The collector now rechecks that
+same journal when a process exits during observation; offline controls prove
+it neither relaunches a completed job nor accepts a genuinely absent journal.
+
+Earlier original results remain available: v1 lacks the kernel's optional
+process-children file; v2's launcher incorrectly excludes the player's CPU 0;
+v3's combined Win/F12 report fails to open OSD. Those test-driver issues are
+corrected. The v4 player reaches both OSD transitions but then stops cartridge
+execution with "MiSTer initialization did not complete". That intermittent
+transport/recovery failure remains unresolved despite v5 passing. Every run
+restores PICO-8 and verifies the protected installation. No candidate has been
+installed or published, and full candidate qualification remains false.
+
+Host sanitizer and SDK ARM/QEMU probe checks, including invalid persistent
+state rejection, are recorded in `build/hid-frontend-probe-v5-20261006`.
+The two registered frontend-probe/oracle CTest checks pass in
+`build/hid-frontend-cmake-v2-20261006`. Production sources and binaries are
+unchanged by these development tools.
+
+A separate player with compile-time reset tracing is prepared in
+`build/hid-frontends-trace-v1-20261006` for investigating v4. Its target ABI,
+backend/input and dispatch checks pass. That diagnostic player has not been
+tested on hardware and is explicitly ineligible for release or qualification
+of the default production binary.
