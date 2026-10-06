@@ -36,7 +36,8 @@ def build(package, output):
         source = package / "sd-card" / path
         if digest(source) != manifest["files"][path]["sha256"]:
             raise ValueError(f"Input checksum failed: {path}")
-    if output.exists() or output.with_suffix(".zip").exists():
+    archive = Path(str(output) + ".zip")
+    if output.exists() or archive.exists():
         raise FileExistsError("Use a fresh output path; existing packages are immutable")
     output.mkdir(parents=True)
     scripts = output / "Scripts"
@@ -76,7 +77,6 @@ def build(package, output):
                   for p in sorted(output.rglob("*")) if p.is_file()},
     }
     (output / "manifest.json").write_text(json.dumps(status, indent=2) + "\n", newline="\n")
-    archive = output.with_suffix(".zip")
     with zipfile.ZipFile(archive, "x", compression=zipfile.ZIP_DEFLATED) as z:
         for path in sorted(output.rglob("*")):
             if path.is_file():

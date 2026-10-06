@@ -31,9 +31,9 @@ class PackageTest(unittest.TestCase):
         (self.input / "licenses/LICENSE").write_text("fixture license")
 
     def test_main_omitted_and_qualification_not_inherited(self):
-        output = self.base / "installer"
+        output = self.base / "installer.v0.1.0-dev.20261005"
         packager.build(self.input, output)
-        with zipfile.ZipFile(output.with_suffix(".zip")) as z:
+        with zipfile.ZipFile(Path(str(output) + ".zip")) as z:
             self.assertIsNone(z.testzip())
             self.assertNotIn("MiSTer", z.namelist())
             self.assertFalse(any(p.endswith("/MiSTer") for p in z.namelist()))
