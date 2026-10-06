@@ -88,7 +88,7 @@ clean installation is confirmed, with all five installed release payload hashes
 verified and the shared stock MiSTer executable preserved.
 
 Pending work includes complete stock-Main startup/reset/source-save behavior
-and a per-core horizontal-wheel replacement, broader Studio/cart/API coverage,
+and native qualification of per-core horizontal scrolling, broader Studio/cart/API coverage,
 Bluetooth power-cycle/multi-controller coverage, CRT, physical microphone/FFT,
 SD power-loss durability, and complete external timing/latency qualification.
 See [release status](docs/release-status.md), [validation](docs/validation.md),

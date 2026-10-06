@@ -73,5 +73,8 @@ The development HID input implementation references the Linux kernel
 community's [HIDraw documentation](https://www.kernel.org/doc/html/latest/hid/hidraw.html),
 originally documented by Alan Ott of Signal 11 Software, and the kernel HID
 maintainers' resolution-multiplier and USB/Bluetooth transport behavior.
+The native input diagnostic also references
+[UHID documentation](https://www.kernel.org/doc/html/latest/hid/uhid.html),
+written by David Herrmann, and the kernel's public UHID API headers.
 These are API/behavior references; kernel driver source is not bundled into
 the TIC-80 executable.

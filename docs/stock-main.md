@@ -192,3 +192,47 @@ core remains PICO-8 throughout the check. Evidence is in
 `build/user-install-readonly-20261005/result.json`. Installation success does
 not close the remaining runtime gates. The newer HID worker remains a local
 development candidate and has not been deployed by these checks.
+
+## Native reader test preparation
+
+`tools/hid_pan_probe.c` creates four private UHID mice only while TIC-80 is
+selected. It checks that the named Main process has each evdev handle and that
+its own grab request returns busy. It also enumerates process handles to reject
+another possible owner. Coarse, numbered high-resolution and unnumbered
+high-resolution reports then pass through the real kernel and the production
+private HID reader. A fourth device withholds its feature reply while healthy
+motion continues. The test never changes a physical mouse's feature setting.
+Its direct active/epoch calls exercise the reader's gate behavior; they do not
+establish end-to-end FPGA OSD or frontend `mouse()` behavior.
+
+The test uses the public
+[UHID API](https://www.kernel.org/doc/html/latest/hid/uhid.html) and checks the
+descriptor/report layouts locally before device creation. Closing its UHID
+handles removes its virtual devices. Core changes stop injection; its temporary
+character-node aliases are confined to its own newly created `/tmp` directory.
+
+`tools/test_hid_pan_native.py` runs the reader-only test with the published
+TIC-80 payloads and stock Main. It records the original job once, collects its
+status journal, and restores Main's original RBF/MGL argument. It verifies
+installation/configuration hashes and cartridge-tree metadata. Local offline
+regressions cover successful restoration, a lost launch reply without relaunch,
+refusal of an unexpected Main and protection of a user-selected different core.
+This driver requires a free, user-authorized test window before switching an
+occupied core. No candidate binaries are installed in this first test.
+
+The prepared current probe passes optimized host ASan/UBSan and ARM/QEMU
+descriptor/refusal checks (`build/native-hid-probe-v3-20261006/result.json`).
+The preceding CMake run passes the parser, private worker, probe descriptor and
+evdev fixture tests on both architectures. Its snapshot predates the added Main
+identity/other-owner checks; those changes are compiled in the current probe.
+The Python driver's four offline rollback/ownership cases also pass through
+its registered CTest. These checks prepare native execution; they do not claim
+that native execution has happened.
+
+`tools/prepare_hid_native_candidate.py` separately freezes the new RBF and both
+production frontends, the published handler/CA file, the current native probe
+and an exact copy of the published five-file rollback. The private manifest
+`build/hid-native-candidate-v2-20261006/manifest.json` excludes a Main payload
+and marks native qualification false. The MiSTer preflight confirms UHID,
+HIDraw and generic HID support; PICO-8 remains selected, and no virtual device
+has been created there by this work. Native execution awaits the test window.
