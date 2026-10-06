@@ -95,6 +95,7 @@ int main(int argc,char **argv) {
     unsigned long reset_holds=0,reset_runs=0;
     int reconnecting=0,reload_pending=0,generation_valid=0;
     int mgl_wait=0;
+    int launch_unknown=0; uint64_t launch_check_after=0;
     uint32_t previous_status=0; tm_core_generation generation={0};
     unsigned long reloads=0; uint64_t reload_started=0;
     unsigned output_failures=0; unsigned long output_flushes=0;
@@ -182,13 +183,23 @@ int main(int argc,char **argv) {
                     if((!memory || main_processes) && transfer<=0 && !queued_cart) {
                         int launch=tm_main_initial_cart(main_processes);
                         mgl_wait=launch!=0;
+                        launch_unknown=launch<0; launch_check_after=counter()+100000000ULL;
                         if(mgl_wait) tm_live_log_printf(logs,"Studio waiting for initial MGL cartridge; launch_context=%d\n",launch);
                     }
                     tm_live_log_printf(logs,"Studio MiSTer initialization ready\n");
                 }
             }
         }
-        if(mgl_wait && (transfer>0 || (reset_released && !initialized_now))) mgl_wait=0;
+        if(online && mgl_wait && launch_unknown && !reload_pending && !initialized_now &&
+           !(status&1) && transfer<=0 && counter()>=launch_check_after) {
+            int launch=tm_main_initial_cart(main_processes);
+            launch_check_after=counter()+100000000ULL;
+            if(launch>=0) {
+                launch_unknown=0; if(!launch) mgl_wait=0;
+                tm_live_log_printf(logs,"Studio Main launch context resolved: initial_MGL_cart=%d\n",launch);
+            }
+        }
+        if(mgl_wait && (transfer>0 || (reset_released && !initialized_now))) mgl_wait=launch_unknown=0;
         if(online) {
             previous_status=status;
             reset_held=reload_pending || mgl_wait || (status&1);

@@ -40,15 +40,19 @@ def run(frontend, studio, scenario, omit_context=False):
                 def values(key):
                     try: return save_values(fixture.saves,key)
                     except FileNotFoundError: return [0]*256
-                def wait(predicate,seconds=6):
+                def wait(predicate,seconds=6,reason='Frontend did not reach the expected state'):
                     deadline=time.monotonic()+seconds
                     while not predicate():
                         assert process.poll() is None,output()
-                        assert time.monotonic()<deadline,output()
+                        assert time.monotonic()<deadline,(reason,output())
                         time.sleep(.005)
                 wait(lambda:values('mgl-old')[0]>=60)
                 assert values('mgl-old')[1]==1
                 if scenario!='raw': cmdline.write_bytes(raw_argv+str(mgl).encode()+b'\0')
+                if scenario in ('transient-raw','transient-mgl'):
+                    # A process observation during exec need not return a
+                    # complete argv vector. It cannot authorize cached BOOT.
+                    cmdline.write_bytes(raw_argv[:-1])
                 if scenario=='missing': mgl.unlink()
                 # Fresh FPGA session exists before Main finishes initialization.
                 fixture.put('SESSION_ACK',0)
@@ -67,6 +71,20 @@ def run(frontend, studio, scenario, omit_context=False):
                     after=values('mgl-old')[:2]
                     assert after[1]==1,('Cached BOOT before delayed MGL transfer',before,after,output())
                     assert after==before,('Cached TIC during delayed MGL transfer',before,after,output())
+                    if scenario in ('transient-raw','transient-mgl'):
+                        cmdline.write_bytes(raw_argv+(str(mgl).encode()+b'\0' if scenario=='transient-mgl' else b''))
+                        wait(lambda:'launch context resolved:' in output().lower(),
+                             reason='Main launch context did not resolve after coherent argv became available')
+                        if scenario=='transient-raw':
+                            wait(lambda:values('mgl-old')[1]>=2)
+                            assert values('mgl-old')[1]==2,output()
+                        else:
+                            time.sleep(.3)
+                            assert values('mgl-old')[:2]==after,output()
+                            ticket=6 if studio else 10
+                            fixture.transfer(ticket,ordinary('mgl-new',12))
+                            wait(lambda:values('mgl-new')[0]>=60)
+                            assert values('mgl-new')[1]==1 and values('mgl-old')[1]==1,output()
                     if scenario in ('replacement','missing'):
                         next_ticket=6 if studio else 10
                         fixture.transfer(next_ticket,ordinary('mgl-new',12))
@@ -91,7 +109,7 @@ def run(frontend, studio, scenario, omit_context=False):
                     process.send_signal(signal.SIGTERM); process.wait(timeout=4)
                 assert process.returncode==0,output()
                 assert not list(fixture.saves.glob('*.tmp-*'))
-                assert values('mgl-old')[1]==(2 if scenario in ('raw','first-reset','cancel-reset') or
+                assert values('mgl-old')[1]==(2 if scenario in ('raw','first-reset','cancel-reset','transient-raw') or
                                              (studio and scenario=='rejected') else 1),output()
                 if studio:
                     import re
@@ -107,6 +125,6 @@ if __name__=='__main__':
     parser.add_argument('--frontend',required=True)
     parser.add_argument('--studio',action='store_true')
     parser.add_argument('--omit-context-negative-control',action='store_true')
-    parser.add_argument('--scenario',choices=('raw','first-reset','replacement','missing','rejected','cancel-reset','departure','stop'),required=True)
+    parser.add_argument('--scenario',choices=('raw','first-reset','replacement','missing','rejected','transient-raw','transient-mgl','cancel-reset','departure','stop'),required=True)
     args=parser.parse_args()
     run(args.frontend,args.studio,args.scenario,args.omit_context_negative_control)

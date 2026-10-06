@@ -660,7 +660,7 @@ if(TM_BUILD_RUNTIME)
             endif()
             if(Python3_FOUND AND NOT CMAKE_CROSSCOMPILING)
                 add_library(pmem_slow_read SHARED tests/pmem_slow_read.c)
-                foreach(mgl_scenario IN ITEMS raw first-reset replacement missing rejected cancel-reset departure stop)
+                foreach(mgl_scenario IN ITEMS raw first-reset replacement missing rejected transient-raw transient-mgl cancel-reset departure stop)
                     add_test(NAME studio_mgl_${mgl_scenario} COMMAND "${Python3_EXECUTABLE}"
                         "${CMAKE_CURRENT_SOURCE_DIR}/tests/frontend_mgl_startup_test.py"
                         --frontend "$<TARGET_FILE:tic80-studio-live>" --studio --scenario "${mgl_scenario}")
@@ -763,7 +763,7 @@ if(TM_BUILD_RUNTIME)
             add_test(NAME cartridge_lifecycle COMMAND "${Python3_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/tests/service_lifecycle_test.py"
                 --service "$<TARGET_FILE:tic80-live>")
             set_tests_properties(cartridge_lifecycle PROPERTIES TIMEOUT 50)
-            foreach(mgl_scenario IN ITEMS raw first-reset replacement missing rejected cancel-reset departure stop)
+            foreach(mgl_scenario IN ITEMS raw first-reset replacement missing rejected transient-raw transient-mgl cancel-reset departure stop)
                 add_test(NAME player_mgl_${mgl_scenario} COMMAND "${Python3_EXECUTABLE}"
                     "${CMAKE_CURRENT_SOURCE_DIR}/tests/frontend_mgl_startup_test.py"
                     --frontend "$<TARGET_FILE:tic80-live>" --scenario "${mgl_scenario}")

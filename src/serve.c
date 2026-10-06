@@ -211,6 +211,8 @@ int tm_serve(int argc, char **argv)
     int generation_valid = tm_backend_core_generation(&backend, &generation) == 1;
     int reload_pending = 0;
     int mgl_wait = 0;
+    int launch_unknown = 0;
+    u64 launch_check_after = 0;
     u64 reload_started = 0;
     u64 pause_started = 0, notice_until = 0;
     unsigned long ticks = 0, game_ticks = 0;
@@ -257,6 +259,8 @@ int tm_serve(int argc, char **argv)
                 if ((!memory_file || main_processes) && !pending) {
                     int launch = tm_main_initial_cart(main_processes);
                     mgl_wait = launch != 0;
+                    launch_unknown = launch < 0;
+                    launch_check_after = real_counter(NULL) + 100000000ULL;
                     if (mgl_wait) {
                         fprintf(stderr, "Waiting for initial MGL cartridge; launch_context=%d\n", launch);
                         if (!pause_started) pause_started = real_counter(NULL);
@@ -274,10 +278,25 @@ int tm_serve(int argc, char **argv)
                 break;
             }
         }
+        // Reading /proc can overlap Main's fork/exec transition. Keep the VM
+        // held, but re-observe unknown context so a raw reload can recover.
+        // Only a coherent result releases it; elapsed time never does.
+        if (mgl_wait && launch_unknown && !reload_pending && !initialized_now &&
+            !(status & 1) && pending <= 0 && real_counter(NULL) >= launch_check_after) {
+            int launch = tm_main_initial_cart(main_processes);
+            launch_check_after = real_counter(NULL) + 100000000ULL;
+            if (launch >= 0) {
+                launch_unknown = 0;
+                if (!launch) { mgl_wait = 0; reset_cart = cached != NULL; }
+                fprintf(stderr, "Main launch context resolved: initial_MGL_cart=%d\n", launch);
+            }
+        }
         // Main's initialization reset is released before its delayed MGL
         // action. Only an actual ticket or a subsequent user reset releases
         // this extra hold. A timeout cannot authorize cached cartridge BOOT.
-        if (mgl_wait && (pending > 0 || (reset_released && !initialized_now))) mgl_wait = 0;
+        if (mgl_wait && (pending > 0 || (reset_released && !initialized_now))) {
+            mgl_wait = launch_unknown = 0;
+        }
         // Main also asserts reset while replacing a core. Hold the cartridge
         // until release, so a departure cannot run an extra BOOT/save cycle.
         if ((status & 1) || reload_pending || mgl_wait) {

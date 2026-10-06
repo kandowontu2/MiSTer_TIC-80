@@ -508,7 +508,27 @@ def main():
             current_pid = current_cart = None
         r[gate_name] = True
     except BaseException as error:
-        r['error'] = type(error).__name__ + ': ' + str(error); test.save(); raise
+        r['error'] = type(error).__name__ + ': ' + str(error); test.save()
+        # Preserve the failing launch observation before cleanup changes Main.
+        # Observation recovery may reconnect, but never re-dispatches a job.
+        if connected:
+            try:
+                executables = test.run('for f in /proc/[0-9]*/exe; do '
+                    'tm_launch_executable=$(readlink "$f" 2>/dev/null); '
+                    'test "$tm_launch_executable" != /media/fat/MiSTer || printf "%s\\n" "$f"; done; true').splitlines()
+                processes = []
+                for path in executables:
+                    pid = path.split('/')[2]; assert pid.isdigit()
+                    processes.append(dict(pid=pid,argv=test.argv(pid)))
+                observation = dict(core=test.core(), matching_Main_processes=processes,
+                                   original_frontend_identity=frontend_identity)
+                if active_frontend:
+                    observation['original_frontend_log'] = test.run('tail -50 ' + active_frontend + '.log')
+                r['failure_observation'] = observation; test.save()
+            except BaseException as observation_error:
+                r['failure_observation_error'] = type(observation_error).__name__ + ': ' + str(observation_error)
+                test.save()
+        raise
     finally:
         try:
             if connected and 'before' in r:
