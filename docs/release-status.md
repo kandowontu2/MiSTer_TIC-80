@@ -29,6 +29,17 @@ core/runtime files have verified backups at
 `build/stock-main-preview-installation-v1-20261006` and
 `build/stock-main-preview-installation-review-v1-20261006`.
 
+The matching installer bundle and documentation are also promoted to their
+standard SD-card paths, so rerunning `Scripts/Install_TIC80.sh` uses the new
+release. All 80 distribution files match the reviewed public ZIP. The 26 changed
+bundle/documentation entries are backed up under the installation backup's
+`installer-bundle-before` directory, with an absent-file/hash journal. The
+standard script's read-only check exits 0 while current installed Studio stays
+running. Independent review rechecks all distribution hashes, the backup
+journal, current runtime, settings, official Main and unchanged games metadata.
+Receipts are `build/stock-main-installer-bundle-promotion-v1-20261006` and
+`build/stock-main-installer-bundle-review-v1-20261006`.
+
 All four public assets also pass unauthenticated download and exact byte/hash
 checks in `build/stock-main-preview-public-download-v1-20261006`. The published
 qualification record describes the bounded evidence available at packaging;
