@@ -16,9 +16,25 @@ new bundle; it does not run installation or reuse the old installed payloads
 as substitutes. Evidence is
 `build/stock-main-release-installer-native-v1-20261006/result.json` and
 `build/stock-main-release-packages-review-v1-20261006.json`. The new preview is
-published, but the board still has the earlier preview installed. Exact-current
-human HDMI/stereo, physical controls and final installation acceptance remain
-pending. Full release qualification is false.
+published and now installed through its own script. Normal Frontier starts
+the exact published Studio binary. A private, uniquely identified music cart
+passes a ten-second installed playback/frame check with zero underruns and
+one BOOT; its CRC-valid test save is checked and removed after normal MENU
+departure. Installed Studio is then returned to its startup console. All three
+original departure/installer/monitor jobs exit 0. Independent read-only review
+verifies the five installed hashes, original Frontier, official Main, settings,
+existing installer, games metadata and restored source caches. The three changed
+core/runtime files have verified backups at
+`/media/fat/Scripts/TIC80-backups/20261006T110211Z.25545`. Receipts are
+`build/stock-main-preview-installation-v1-20261006` and
+`build/stock-main-preview-installation-review-v1-20261006`.
+
+All four public assets also pass unauthenticated download and exact byte/hash
+checks in `build/stock-main-preview-public-download-v1-20261006`. The published
+qualification record describes the bounded evidence available at packaging;
+this later installation receipt adds the real installer/Frontier acceptance
+check. Exact-current human HDMI/stereo and physical controls remain pending.
+Full release qualification is false.
 
 ## Earlier preview and candidate validation record
 

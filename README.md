@@ -84,9 +84,10 @@ ten-minute player/Studio music soaks, synthetic mouse/OSD checks, startup/reload
 and private Studio Save workflows, and native bad-cartridge/worker recovery.
 Its current binaries still need human picture/stereo and physical-control
 confirmation. The installer passes local integrity checks and a native read-only
-check of all 61 staged script/bundle files. The user confirmed clean installation
-of the earlier preview; this updated bundle has not yet been installed on the
-test MiSTer. Installer bundles include a checksum-bound
+check of all 61 staged script/bundle files. The updated bundle is now installed
+on the test MiSTer through that script, with normal Frontier startup, a passing
+bounded music check and verified backups. The user confirmed clean installation
+of the earlier preview. Installer bundles include a checksum-bound
 `docs/TIC-80/qualification.json` identifying the exact payloads, bounded
 evidence and outstanding checks. Packaging these records does not transfer
 the older prototype's physical qualification to the new binaries.
