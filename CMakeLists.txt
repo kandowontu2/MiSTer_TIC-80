@@ -686,12 +686,17 @@ if(TM_BUILD_RUNTIME)
                         --scenario "${reset_scenario}")
                     set_tests_properties(studio_reset_${reset_scenario} PROPERTIES TIMEOUT 30)
                 endforeach()
+                add_library(studio_reload_stdio SHARED tests/stdio_unbuffered.c)
                 foreach(reload_scenario IN ITEMS delayed generation prior departure offline absent queued timeout repeat)
                     add_test(NAME studio_reload_${reload_scenario} COMMAND "${Python3_EXECUTABLE}"
                         "${CMAKE_CURRENT_SOURCE_DIR}/tests/studio_reload_test.py" --frontend "$<TARGET_FILE:tic80-studio-live>"
-                        --scenario "${reload_scenario}")
+                        --scenario "${reload_scenario}" --trace-library "$<TARGET_FILE:studio_reload_stdio>")
                     set_tests_properties(studio_reload_${reload_scenario} PROPERTIES TIMEOUT 30)
                 endforeach()
+                add_test(NAME studio_reload_execution_oracle COMMAND "${Python3_EXECUTABLE}"
+                    "${CMAKE_CURRENT_SOURCE_DIR}/tests/studio_reload_oracle_test.py"
+                    --frontend "$<TARGET_FILE:tic80-studio-live>" --trace-library "$<TARGET_FILE:studio_reload_stdio>")
+                set_tests_properties(studio_reload_execution_oracle PROPERTIES TIMEOUT 30)
             endif()
         endif()
         add_executable(backend_test tests/backend_test.c)

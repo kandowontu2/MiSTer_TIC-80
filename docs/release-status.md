@@ -22,6 +22,15 @@ Both production frontends are rebuilt with unchanged, hash-bound SDK language
 libraries; target ABI, backend/input tests and helper dispatch pass. These
 changes have not replaced the published release or the installed binaries.
 
+The current ARM binaries additionally pass modeled player held-transfer and
+delayed-initialization checks and Studio anonymous selection/cancellation.
+All nine Studio reload scenarios and an execution-oracle negative control pass
+under ARM/QEMU. The original workflow run failed an asynchronous disk-flush
+comparison and remains preserved; actual TIC tracing establishes the corrected
+oracle. See `build/studio-reload-oracle-v5-20261006/result.json` and
+[standard-Main compatibility](stock-main.md) for its scope. This is local
+runtime evidence, with no MiSTer access or installed/published payload changes.
+
 ## Historical prototype qualification
 
 Matched build `18de1e89` was previously installed in the normal SD-card

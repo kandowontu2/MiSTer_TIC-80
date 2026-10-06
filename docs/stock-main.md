@@ -190,6 +190,28 @@ linking, passes backend/input/frontend tests and checks both helper entry points
 It does not represent a fresh rebuild of the unchanged language libraries.
 None of these local checks establishes full stock-Main qualification.
 
+The rebuilt ARM production binaries also pass modeled player held-transfer and
+delayed-initialization workflows, plus Studio anonymous-selection acceptance
+and cancellation. The original fifth case, Studio queued reload, fails its
+disk-state comparison in `build/hid-frontends-workflows-v1-20261006`; that
+overall failure remains preserved. Investigation observes an asynchronous pause
+flush of previously completed ticks, rather than new cartridge execution.
+Unbuffered cartridge tracing shows no TIC calls during the hold. An intentionally
+early initialization edge produces six TIC calls and is detected by that oracle
+(`build/studio-reload-trace-diagnostic-v3-20261006`).
+
+The corrected reload fixture observes actual TIC traces across ordered hold
+markers and checks final persistent values against the exact acknowledged tick
+and BOOT counts. It retains CRC, worker cleanup, frozen DDR and modeled audio
+checks. All nine reload scenarios and the early-edge negative control pass with
+the unchanged production Studio binary under ARM/QEMU
+(`build/studio-reload-oracle-v5-20261006/result.json`). This run extracts the
+actual CMake reload-test registration into a minimal project and imports the
+hash-verified production binary; it does not rebuild the language libraries.
+The stdout-unbuffering library is test-only and is not installed or packaged.
+These models do not execute stock Main, qualify initial delayed MGL selection
+on hardware, or close the pending native runtime gates.
+
 The user confirmed the published installer works after the clean-install
 preparation on October 5. Preparation restored official stock Main, removed
 and backed up the TIC-80 cores and per-core mappings, and preserved the games
