@@ -239,6 +239,8 @@ def main():
                     r["carts_after"] = run("find /media/fat/games/TIC-80/Carts -exec stat -c '%d:%i:%s:%Y:%Z:%F %n' {} +")
                     assert r["carts_before"] == r["carts_after"], "Cartridge tree changed"
                 main_process()
+                r["final_core"] = core()
+                assert r["final_core"] == args.initial_core, "Core changed before final restoration verification"
                 r["restored_verified"] = True
                 r["passed"] = bool(r.get("reader_path_passed"))
         except BaseException as error:

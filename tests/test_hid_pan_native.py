@@ -40,6 +40,7 @@ class Board:
     def __init__(self, fault=None):
         self.fault, self.core, self.pid = fault, "PICO-8", "101"
         self.commands, self.files, self.launches = [], {}, 0
+        self.original_restored = False
         self.original = "/media/fat/_Other/PICO8_20251012.rbf"
         paths = ("_Other/TIC80_20261003.rbf", "games/TIC-80/TIC-80", "games/TIC-80/TIC-80-Studio",
                  "games/TIC-80/_handler.sh", "games/TIC-80/cacert.pem")
@@ -76,6 +77,8 @@ class Board:
             return self.pid + "\n"
         if command.startswith("sha256sum"):
             path = shlex.split(command)[-1]
+            if self.original_restored and self.fault == "late-user-core-change" and path.endswith("/TIC80_20261003.rbf"):
+                self.core = "Gundam EX"
             if path == "/media/fat/MiSTer" or path.startswith("/proc/"):
                 digest = "0" * 64 if self.fault == "wrong-main" else driver.STOCK
             elif path in self.files:
@@ -90,6 +93,8 @@ class Board:
             payload = tokens[tokens.index("printf") + 2]
             path = payload[len("load_core "):].strip()
             self.core = "MENU" if path.endswith("menu.rbf") else ("PICO-8" if path == self.original else "TIC-80")
+            if path == self.original:
+                self.original_restored = True
             self.pid = str(int(self.pid) + 1)
             return ""
         if "devmem" in command:
@@ -196,6 +201,15 @@ class NativeDriverTests(unittest.TestCase):
         self.assertEqual(result["dispatches"], [])
         self.assertEqual(board.core, "PICO-8")
         self.assertEqual(board.files, {})
+
+    def test_core_change_after_restore_is_not_reported_as_verified(self):
+        board, result, error = self.run_driver("late-user-core-change")
+        self.assertIsNotNone(error)
+        self.assertFalse(result["passed"])
+        self.assertTrue(result["reader_path_passed"])
+        self.assertEqual(result["final_core"], "Gundam EX")
+        self.assertFalse(result.get("restored_verified", False))
+        self.assertEqual(sum("load_core " in command for command in board.commands), 4)
 
 
 if __name__ == "__main__":

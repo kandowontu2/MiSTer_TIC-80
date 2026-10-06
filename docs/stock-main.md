@@ -225,7 +225,7 @@ descriptor/refusal checks (`build/native-hid-probe-v3-20261006/result.json`).
 The preceding CMake run passes the parser, private worker, probe descriptor and
 evdev fixture tests on both architectures. Its snapshot predates the added Main
 identity/other-owner checks; those changes are compiled in the current probe.
-The Python driver's four offline rollback/ownership cases also pass through
+The Python driver's five offline rollback/ownership cases also pass through
 its registered CTest. These checks prepare native execution; they do not claim
 that native execution has happened.
 
