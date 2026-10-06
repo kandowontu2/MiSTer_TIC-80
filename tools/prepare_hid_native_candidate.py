@@ -28,15 +28,19 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--probe-build", type=Path, required=True)
+    parser.add_argument("--frontend-build", type=Path,
+                        default=ROOT / "build/hid-frontends-v1-20261005")
     args = parser.parse_args()
     args.output.mkdir()  # Fresh immutable evidence; never replace a prior plan.
     archive = ROOT / "releases" / f"TIC80-Frontier-{RELEASE}.zip"
     assert sha(archive) == RELEASE_SHA
-    frontends = ROOT / "build/hid-frontends-v1-20261005"
+    frontends = args.frontend_build
     frontend_receipt = read(frontends / "result.json")
     assert frontend_receipt["passed"] and frontend_receipt["backend_and_input_ABI_match"]
     for name, expected in frontend_receipt["source_sha256"].items():
         assert sha(ROOT / name) == expected, name
+    for name in ("tic80-live", "tic80-studio-live"):
+        assert sha(frontends / name) == frontend_receipt["binaries"][name], name
     probe = read(args.probe_build / "result.json")
     assert probe["passed"]
     binary = args.probe_build / "arm/tic80-hid-pan-probe"

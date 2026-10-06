@@ -130,8 +130,11 @@ The development frontends now dispatch `--hid-wheel-worker` before normal
 initialization. Their backend uses that private process for HIDraw discovery
 and report decoding instead of the direct evdev reader. Descriptor and GET
 feature queries run in separate per-device children with a 1.5-second deadline.
-A stalled request does not stop other devices or the reader heartbeat; its
-configuration remains disabled until the device node is replaced. Killed probe
+A stalled request does not stop other devices or the reader heartbeat. Temporary
+query errors, timeouts and probe socket/fork failures retry on the same device
+node after 1, 2, 4, 8, 16 and then 30 seconds. Unsupported or malformed
+descriptors stay cached until node replacement. A recovered device drains its
+old motion before accepting new reports. Killed probe
 slots remain reserved until their specific child is reaped, bounding pending
 helpers even when a kernel request has not returned. Probe children close other
 inherited descriptors and receive SIGKILL when their reader parent dies.
@@ -150,7 +153,12 @@ host ASan/UBSan and SDK ARM/QEMU checks pass, including healthy-device motion,
 new discovery and node replacement with stalled devices still attached.
 The reader heartbeat continues past the frontend watchdog interval, and the
 timed-out probe children are reaped. Separate reader suspension still exercises
-the frontend watchdog. Current-source evidence is in
+the frontend watchdog. Current-source recovery evidence is in
+`build/hid-retry-after-20261006/result.json`. It additionally covers temporary
+feature/descriptor failures and exhausted probe sockets without reconnecting,
+discarding their queued motion and retaining unsupported-descriptor caching.
+The original regression failed before the fix and is preserved separately in
+`build/hid-retry-before-20261006`. Earlier probe-isolation evidence is in
 `build/hid-probes-current-v9-20261005/result.json`; the preceding CMake run is
 `build/hid-wheel-probes-v8-20261005/result.json`. Those simulations
 do not prove that native device reports remain available while stock Main
@@ -176,7 +184,7 @@ and its ELF has no interpreter segment. The corrected full SDK build in
 libraries, but its optimized evdev fixture fails; that original failure is
 preserved. Current fixture corrections pass separately under host and ARM/QEMU.
 Both actual frontends are subsequently rebuilt with the current HID integration
-in `build/hid-frontends-v1-20261005`. This component build reuses unchanged,
+in `build/hid-frontends-v2-20261006`. This component build reuses unchanged,
 hash-bound language libraries; it verifies the target backend/input ABI before
 linking, passes backend/input/frontend tests and checks both helper entry points.
 It does not represent a fresh rebuild of the unchanged language libraries.
@@ -221,18 +229,22 @@ This driver requires a free, user-authorized test window before switching an
 occupied core. No candidate binaries are installed in this first test.
 
 The prepared current probe passes optimized host ASan/UBSan and ARM/QEMU
-descriptor/refusal checks (`build/native-hid-probe-v3-20261006/result.json`).
+descriptor/refusal checks (`build/native-hid-probe-v4-20261006/result.json`).
 The preceding CMake run passes the parser, private worker, probe descriptor and
 evdev fixture tests on both architectures. Its snapshot predates the added Main
 identity/other-owner checks; those changes are compiled in the current probe.
 The Python driver's five offline rollback/ownership cases also pass through
-its registered CTest. These checks prepare native execution; they do not claim
+its registered CTest. The current host sanitizer CMake run passes all five
+selected decoder, worker, probe descriptor, evdev and driver tests
+(`build/hid-retry-cmake-20261006/result.json`). These checks prepare native execution; they do not claim
 that native execution has happened.
 
 `tools/prepare_hid_native_candidate.py` separately freezes the new RBF and both
 production frontends, the published handler/CA file, the current native probe
-and an exact copy of the published five-file rollback. The private manifest
-`build/hid-native-candidate-v2-20261006/manifest.json` excludes a Main payload
+and an exact copy of the published five-file rollback. Its `--frontend-build`
+argument selects a checked rebuild; source and executable hashes must match
+that build's passing receipt. The private manifest
+`build/hid-native-candidate-v3-20261006/manifest.json` excludes a Main payload
 and marks native qualification false. The MiSTer preflight confirms UHID,
 HIDraw and generic HID support; PICO-8 remains selected, and no virtual device
 has been created there by this work. Native execution awaits the test window.

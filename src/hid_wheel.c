@@ -26,10 +26,11 @@ enum { COMMAND_MAGIC = 0x43485754, RESPONSE_MAGIC = 0x52485754 };
 typedef struct { uint32_t magic, value; uint64_t generation; } message;
 _Static_assert(sizeof(message) == 16, "HID worker wire size");
 typedef struct {
-    int fd, seen, usable;
+    int fd, seen, usable, retryable;
+    unsigned failures;
     int probe_socket;
     pid_t probe_pid;
-    uint64_t probe_deadline;
+    uint64_t probe_deadline, next_probe;
     char name[32];
     dev_t device, special; ino_t inode; struct timespec changed;
     tm_hid_pan pan;
@@ -207,9 +208,10 @@ static int configure(device *d)
 {
     int size = 0;
     struct hidraw_report_descriptor descriptor = {0};
-    if (ioctl(d->fd,HIDIOCGRDESCSIZE,&size) < 0 || size <= 0 || size >= HID_MAX_DESCRIPTOR_SIZE) return -1;
+    if (ioctl(d->fd,HIDIOCGRDESCSIZE,&size) < 0) return -2;
+    if (size <= 0 || size >= HID_MAX_DESCRIPTOR_SIZE) return -1;
     descriptor.size = (uint32_t)size;
-    if (ioctl(d->fd,HIDIOCGRDESC,&descriptor) < 0 || descriptor.size != (uint32_t)size) return -1;
+    if (ioctl(d->fd,HIDIOCGRDESC,&descriptor) < 0 || descriptor.size != (uint32_t)size) return -2;
     int status = tm_hid_pan_parse(&d->pan,descriptor.value,descriptor.size);
     if (status <= 0) return status;
     uint8_t requested[256] = {0};
@@ -229,10 +231,10 @@ static int configure(device *d)
         unsigned prefix;
         if (bytes == (int)length && feature[0] == id) prefix = 1;
         else if (!id && bytes == (int)length-1) prefix = 0;
-        else return -1;
-        if (tm_hid_pan_feature(&d->pan,id,feature+prefix,length-1) < 0) return -1;
+        else return -2;
+        if (tm_hid_pan_feature(&d->pan,id,feature+prefix,length-1) < 0) return -2;
     }
-    return tm_hid_pan_ready(&d->pan) ? 1 : -1;
+    return tm_hid_pan_ready(&d->pan) ? 1 : -2;
 }
 static void close_except(int first, int second)
 {
@@ -246,10 +248,20 @@ static void close_except(int first, int second)
     }
     closedir(dir);
 }
+static void retry_probe(device *d, uint64_t now)
+{
+    /* Back off transient transport/resource failures without requiring a
+     * reconnect. The slot remains reserved while a killed child is unreaped. */
+    unsigned delay = d->failures < 5 ? 1000u << d->failures : 30000u;
+    if (d->failures < 5) ++d->failures;
+    d->retryable = 1; d->next_probe = now + delay;
+}
 static void start_probe(device *d, uint64_t now)
 {
     int sockets[2];
-    if (socketpair(AF_UNIX,SOCK_SEQPACKET|SOCK_NONBLOCK|SOCK_CLOEXEC,0,sockets)) return;
+    if (socketpair(AF_UNIX,SOCK_SEQPACKET|SOCK_NONBLOCK|SOCK_CLOEXEC,0,sockets)) {
+        retry_probe(d,now); return;
+    }
     pid_t parent = getpid(), child = fork();
     if (!child) {
         if (prctl(PR_SET_PDEATHSIG,SIGKILL) || parent != getppid()) _exit(1);
@@ -262,7 +274,8 @@ static void start_probe(device *d, uint64_t now)
         _exit(sent == sizeof result ? 0 : 1);
     }
     close(sockets[1]);
-    if (child < 0) { close(sockets[0]); return; }
+    if (child < 0) { close(sockets[0]); retry_probe(d,now); return; }
+    d->retryable = 0;
     d->probe_pid = child; d->probe_socket = sockets[0];
     d->probe_deadline = now + 1500;
 }
@@ -274,7 +287,10 @@ static void poll_probe(device *d, uint64_t now)
         probe_result result;
         ssize_t size = recv(d->probe_socket,&result,sizeof result,MSG_DONTWAIT|MSG_TRUNC);
         if (size == sizeof result) {
+            if (result.status == -2) retry_probe(d,now);
+            else d->retryable = 0;
             if (result.status == 1) {
+                d->failures = 0;
                 d->pan = result.pan; d->usable = 1;
                 /* Reports arriving during configuration have no current gate
                  * baseline. Drain them before accepting gameplay motion. */
@@ -282,7 +298,9 @@ static void poll_probe(device *d, uint64_t now)
             }
             stop_probe(d);
         } else if (size >= 0 || (errno != EAGAIN && errno != EWOULDBLOCK && errno != EINTR) ||
-                   now >= d->probe_deadline) stop_probe(d);
+                   now >= d->probe_deadline) {
+            retry_probe(d,now); stop_probe(d);
+        }
     } else {
         pid_t result = waitpid(d->probe_pid,NULL,WNOHANG);
         if (result > 0 || (result < 0 && errno == ECHILD)) d->probe_pid = 0;
@@ -318,8 +336,8 @@ static void scan(reader *s)
         d->inode = metadata.st_ino; d->changed = metadata.st_ctim;
         if (fstat(fd,&opened) || !same(d,&opened)) { close(fd); continue; }
         d->fd = fd; d->seen = 1; strcpy(d->name,entry->d_name);
-        /* Keep an unsupported device open but unread so its descriptor is not
-         * repeatedly queried. Hotplug/node replacement causes fresh probing. */
+        /* Unsupported descriptors remain cached; temporary query failures
+         * retry with backoff without disturbing other devices. */
         start_probe(d,milliseconds());
     }
     closedir(dir);
@@ -388,6 +406,11 @@ int tm_hid_wheel_worker(int argc, char **argv)
         uint64_t now = milliseconds();
         for (unsigned n = 0; n < DEVICES; ++n) poll_probe(&s->devices[n],now);
         if (now >= s->next_scan) { scan(s); s->next_scan = now+250; }
+        for (unsigned n = 0; n < DEVICES; ++n) {
+            device *d = &s->devices[n];
+            if (d->fd >= 0 && d->retryable && !d->probe_pid && now >= d->next_probe)
+                start_probe(d,now);
+        }
         for (unsigned n = 0; n < DEVICES; ++n) total += read_device(&s->devices[n],active);
         message response = {RESPONSE_MAGIC,total,generation};
         ssize_t bytes = send(WORKER_SOCKET,&response,sizeof response,MSG_DONTWAIT|MSG_NOSIGNAL);

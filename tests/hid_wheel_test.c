@@ -15,6 +15,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/ioctl.h>
+#include <sys/socket.h>
 #include <sys/stat.h>
 #include <sys/wait.h>
 #include <time.h>
@@ -44,6 +45,13 @@ extern int __real___fxstatat(int,int,const char *,struct stat *,int);
 extern int __real___fxstatat64(int,int,const char *,struct stat64 *,int);
 extern int __real_posix_spawn(pid_t *,const char *,const posix_spawn_file_actions_t *,
                             const posix_spawnattr_t *,char *const[],char *const[]);
+extern int __real_socketpair(int,int,int,int[2]);
+int __wrap_socketpair(int domain,int type,int protocol,int sockets[2])
+{
+    char path[512];snprintf(path,sizeof path,"%s/probe-socket-fail",fixture);
+    if(worker_process && !access(path,F_OK)) {errno=EMFILE;return -1;}
+    return __real_socketpair(domain,type,protocol,sockets);
+}
 static int numeric_node(const char *name)
 {
     if(strncmp(name,"hidraw",6) || !name[6]) return 0;
@@ -172,10 +180,17 @@ int __wrap_ioctl(int fd,unsigned long request,...)
     assert(worker_process);
     assert(fd>=0 && fd<4096 && device_fd[fd]);
     va_list ap;va_start(ap,request);void *data=va_arg(ap,void *);va_end(ap);
+    char logpath[512];snprintf(logpath,sizeof logpath,"%s/%s.queries",fixture,device_name[fd]);
+    int log=open(logpath,O_WRONLY|O_CREAT|O_APPEND,0600);assert(log>=0);
+    uint8_t query=(uint8_t)_IOC_NR(request);assert(write(log,&query,1)==1);close(log);
     char path[512];snprintf(path,sizeof path,"%s/%s.block",fixture,device_name[fd]);
     if(!access(path,F_OK)) {for(;;) pause();} /* Uninterruptible-to-normal-flow probe model. */
     uint8_t desc[4096];size_t length=descriptor_read(fd,desc,sizeof desc);
-    if(request==HIDIOCGRDESCSIZE) {*(int *)data=(int)length;return 0;}
+    if(request==HIDIOCGRDESCSIZE) {
+        snprintf(path,sizeof path,"%s/%s.descriptor-fail",fixture,device_name[fd]);
+        if(!access(path,F_OK)) {errno=EIO;return -1;}
+        *(int *)data=(int)length;return 0;
+    }
     if(request==HIDIOCGRDESC) {
         struct hidraw_report_descriptor *d=data;assert(d->size==length);
         memcpy(d->value,desc,length);return 0;
@@ -185,6 +200,8 @@ int __wrap_ioctl(int fd,unsigned long request,...)
     assert(_IOC_TYPE(request)=='H' && _IOC_NR(request)==0x07);
     snprintf(path,sizeof path,"%s/%s.block-feature",fixture,device_name[fd]);
     if(!access(path,F_OK)) {for(;;) pause();}
+    snprintf(path,sizeof path,"%s/%s.feature-fail",fixture,device_name[fd]);
+    if(!access(path,F_OK)) {errno=EIO;return -1;}
     uint8_t *feature=data;unsigned bytes=_IOC_SIZE(request),id=feature[0];
     snprintf(path,sizeof path,"%s/%s.feature-%u",fixture,device_name[fd],id);
     int f=open(path,O_RDONLY);if(f<0) return -1;
@@ -256,13 +273,24 @@ static void device_create(const char *name,const uint8_t *desc,size_t size)
     char field[64];snprintf(field,sizeof field,"%s.descriptor",name);write_file(field,desc,size);
     write_file(name,NULL,0);
 }
-static void probes_reaped(pid_t worker)
+static void probes_bounded(pid_t worker,unsigned maximum)
 {
     char path[128],bytes[4096];
     snprintf(path,sizeof path,"/proc/%ld/task/%ld/children",(long)worker,(long)worker);
     int fd=open(path,O_RDONLY);assert(fd>=0);
-    ssize_t count=__real_read(fd,bytes,sizeof bytes);assert(count>=0);close(fd);
-    for(ssize_t n=0;n<count;++n) assert(bytes[n]==' ' || bytes[n]=='\n' || bytes[n]=='\t');
+    ssize_t count=__real_read(fd,bytes,sizeof bytes-1);assert(count>=0);close(fd);bytes[count]=0;
+    unsigned children=0;char *p=bytes;
+    for(;;) {
+        char *end;long pid=strtol(p,&end,10);
+        if(end==p) break;
+        assert(pid>0);++children;p=end;
+    }
+    assert(children<=maximum);
+}
+static unsigned query_count(const char *name)
+{
+    char path[512];snprintf(path,sizeof path,"%s/%s.queries",fixture,name);
+    struct stat metadata;assert(!stat(path,&metadata));return (unsigned)metadata.st_size;
 }
 static void lifecycle(void)
 {
@@ -322,7 +350,7 @@ static void lifecycle(void)
     assert(pump(s,1,6,350)==607 && last_child==previous);
     packet("hidraw6",&one,1);expect(s,1,6,608);
     assert(pump(s,1,6,3500)==608 && last_child==previous);
-    probes_reaped(previous);
+    probes_bounded(previous,2);
     packet("hidraw0",&one,1);packet("hidraw6",&one,1);expect(s,1,6,610);
     remove_file("hidraw2");remove_file("hidraw2.block");device_create("hidraw2",coarse,sizeof coarse);
     assert(pump(s,1,6,350)==610 && last_child==previous);
@@ -341,10 +369,35 @@ static void lifecycle(void)
     assert(pump(s,1,6,350)==611);
     for(unsigned n=0;n<8;++n) {packet("hidraw3",&one,1);packet("hidraw4",&one,1);}
     expect(s,1,6,613);
+    /* Feature/descriptor transport failures recover on the same device node.
+     * Motion queued before recovery must not burst into gameplay afterward. */
+    device_create("hidraw7",fine,sizeof fine);write_file("hidraw7.feature-2",feature,sizeof feature);
+    write_file("hidraw7.feature-fail",NULL,0);
+    assert(pump(s,1,6,350)==613);unsigned queries=query_count("hidraw7");assert(queries==3);
+    for(unsigned n=0;n<7;++n) packet("hidraw7",tick,2);
+    remove_file("hidraw7.feature-fail");assert(pump(s,1,6,1300)==613);
+    assert(query_count("hidraw7")>queries);
+    for(unsigned n=0;n<7;++n) packet("hidraw7",tick,2);
+    assert(pump(s,1,6,50)==613);packet("hidraw7",tick,2);expect(s,1,6,614);
+    device_create("hidraw8",coarse,sizeof coarse);write_file("hidraw8.descriptor-fail",NULL,0);
+    assert(pump(s,1,6,350)==614 && query_count("hidraw8")==1);
+    packet("hidraw8",&one,1);remove_file("hidraw8.descriptor-fail");assert(pump(s,1,6,1300)==614);
+    packet("hidraw8",&one,1);expect(s,1,6,615);
+    /* Exhausted probe sockets recover without reconnecting or restarting the
+     * reader, and healthy devices continue during resource pressure. */
+    write_file("probe-socket-fail",NULL,0);device_create("hidraw9",coarse,sizeof coarse);
+    assert(pump(s,1,6,350)==615);packet("hidraw0",&one,1);expect(s,1,6,616);
+    packet("hidraw9",&one,1);remove_file("probe-socket-fail");assert(pump(s,1,6,1300)==616);
+    packet("hidraw9",&one,1);expect(s,1,6,617);
+    /* Unsupported descriptors are not repeatedly queried during scans. */
+    uint8_t unrelated[sizeof coarse];memcpy(unrelated,coarse,sizeof unrelated);unrelated[4]=0;
+    device_create("hidraw10",unrelated,sizeof unrelated);assert(pump(s,1,6,350)==617);
+    queries=query_count("hidraw10");assert(queries==2);
+    assert(pump(s,1,6,1300)==617 && query_count("hidraw10")==queries);
     /* A reader-level stall still uses the independent frontend watchdog. */
     previous=last_child;assert(!kill(previous,SIGSTOP));
-    assert(pump(s,1,6,4650)==613 && last_child!=previous);
-    packet("hidraw0",&one,1);expect(s,1,6,614);
+    assert(pump(s,1,6,4650)==617 && last_child!=previous);
+    packet("hidraw0",&one,1);expect(s,1,6,618);
     previous=last_child;tm_hid_wheel_close(s);
     for(unsigned n=0;n<100 && !kill(previous,0);++n) {usleep(5000);tm_hid_wheel_close(NULL);}
     assert(kill(previous,0)<0 && errno==ESRCH);
