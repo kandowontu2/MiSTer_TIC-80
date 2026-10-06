@@ -268,11 +268,15 @@ def main():
                         help='Use private music fixtures for genuine Main reloads and Studio working-copy Save')
     parser.add_argument('--lifecycle-reloads', type=int, default=4)
     parser.add_argument('--keyboard-build', type=Path)
+    parser.add_argument('--cartridge-matrix', type=Path,
+                        help='Compare all pinned language/format carts through Main, DDR and scaler')
+    parser.add_argument('--cart-snapshot-build', type=Path)
     args = parser.parse_args()
     assert 10 <= args.soak_seconds <= 3600
     assert 1 <= args.lifecycle_reloads <= 16
     assert not args.lifecycle_only or (args.music_fixtures and args.keyboard_build)
-    gate_name = 'lifecycle_gate_passed' if args.lifecycle_only else 'music_gate_passed' if args.music_fixtures else 'api_gate_passed'
+    assert not args.cartridge_matrix or (args.music_fixtures and args.cart_snapshot_build and not args.lifecycle_only)
+    gate_name = 'matrix_gate_passed' if args.cartridge_matrix else 'lifecycle_gate_passed' if args.lifecycle_only else 'music_gate_passed' if args.music_fixtures else 'api_gate_passed'
     sequence = schedule(args.frontends, args.cycles)
     args.evidence.mkdir()
     (args.evidence / 'original-driver.py').write_bytes(Path(__file__).read_bytes())
@@ -300,6 +304,12 @@ def main():
         keyboard = json.loads((args.keyboard_build / 'result.json').read_text())
         assert keyboard['passed'] and sha(ROOT / 'tools/studio_keyboard_probe.c') == keyboard['source_sha256']
         assert sha(args.keyboard_build / 'keyboard-probe') == keyboard['binary_sha256']
+    cart_snapshot = None
+    if args.cartridge_matrix:
+        cart_snapshot = json.loads((args.cart_snapshot_build / 'result.json').read_text())
+        assert cart_snapshot['passed'] and cart_snapshot['read_only']
+        for name, digest in cart_snapshot['source_sha256'].items(): assert sha(ROOT / name) == digest
+        assert sha(args.cart_snapshot_build / 'cart-snapshot') == cart_snapshot['binary_sha256']
     for path, item in manifest['files'].items():
         assert sha(args.candidate / 'candidate' / path) == item['candidate_sha256'], path
         assert sha(args.candidate / 'rollback' / path) == item['rollback_sha256'], path
@@ -325,6 +335,10 @@ def main():
         r['scope'] = 'Private default frontends: genuine stock-Main reloads, native/PNG switches, empty source metadata and Studio working-copy Save'
         r['source_sha256']['tools/native_frontend_lifecycle.py'] = sha(ROOT / 'tools/native_frontend_lifecycle.py')
         r['keyboard_probe'] = keyboard
+    if args.cartridge_matrix:
+        r['scope'] = 'Exact default frontends: stock-Main delivery bytes, complete scaler RGB and active audio for fourteen languages and three formats'
+        r['source_sha256']['tools/native_cartridge_matrix.py'] = sha(ROOT / 'tools/native_cartridge_matrix.py')
+        r['cart_snapshot'] = cart_snapshot
     r['diagnostic_reset_trace'] = bool(manifest.get('diagnostic_reset_trace'))
     if r['diagnostic_reset_trace']:
         r['scope'] = 'Diagnostic reset-trace player; synthetic mouse API/real OSD reproduction, not default binary qualification'
@@ -400,6 +414,11 @@ def main():
         if keyboard:
             assert test.run('sha256sum ' + stage + '/keyboard').split()[0] == keyboard['binary_sha256']
             test.dispatch('private-keyboard-mode', 'chmod 755 ' + stage + '/keyboard')
+        if cart_snapshot:
+            with client.open_sftp() as sftp:
+                sftp.put(str(args.cart_snapshot_build / 'cart-snapshot'), stage + '/cart-snapshot')
+            assert test.run('sha256sum ' + stage + '/cart-snapshot').split()[0] == cart_snapshot['binary_sha256']
+            test.dispatch('private-cart-snapshot-mode', 'chmod 755 ' + stage + '/cart-snapshot')
         test.dispatch('private-executable-modes', 'chmod 755 ' + stage + '/TIC-80 ' + stage + '/TIC-80-Studio ' + stage + '/probe')
         for name in ('TIC-80', 'TIC-80-Studio', 'probe'):
             libraries = test.run('/lib/ld-linux-armhf.so.3 --list ' + stage + '/' + name)
@@ -445,7 +464,7 @@ def main():
             clock = test.run('for n in 1 2; do for r in ' + registers + '; do printf "%s " "$r"; i2cget -y 1 0x39 "$r" b || exit 32; done; sleep .25; done').splitlines()
             assert len(clock) == 26
             r['cycles'][-1]['hdmi'] = analyze([{'registers': dict(line.split() for line in clock[n:n+13])} for n in (0, 13)])
-            active_probe = None if args.lifecycle_only else remote + '/' + label + ('-monitor' if music else '-probe')
+            active_probe = None if args.lifecycle_only or args.cartridge_matrix else remote + '/' + label + ('-monitor' if music else '-probe')
             active_frontend = remote + '/' + label + '-frontend'
             ready = active_probe + '.ready' if active_probe else None
             pid_path = active_frontend + '.pid'
@@ -475,7 +494,16 @@ def main():
             r['cycles'][-1]['frontend_identity'] = frontend_identity
             r['cycles'][-1]['frontend_pid'] = current_frontend; test.save()
             if music:
-                if args.lifecycle_only:
+                if args.cartridge_matrix:
+                    from native_cartridge_matrix import run_matrix
+                    def update_matrix(path):
+                        nonlocal current_mgl, current_pid, current_cart
+                        current_mgl = path; current_pid = current_cart = None
+                    summary = run_matrix(test, args, stage, remote, label, frontend_identity, frontend, update_matrix)
+                    current_pid = summary['last']['main_pid']; current_cart = summary['last']['cart']
+                    r['cycles'][-1]['matrix_summary'] = summary
+                    r['cycles'][-1]['matrix_passed'] = True; test.save()
+                elif args.lifecycle_only:
                     from native_frontend_lifecycle import run_lifecycle
                     active_probe = None
                     def update_lifecycle(path):
