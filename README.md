@@ -13,7 +13,7 @@ installation. See [tested scope and remaining work](docs/stock-main.md).
 
 ## Install
 
-1. Download **TIC80-Frontier-v0.1.0-dev.20261005.zip** from the
+1. Download the **TIC80-Frontier installer ZIP** from the
    [releases page](https://github.com/kandowontu2/MiSTer_TIC-80/releases).
 2. Extract it to the root of your MiSTer SD card (`/media/fat`).
 3. Load MENU, then run **Install_TIC80** from the Scripts menu.
@@ -94,6 +94,16 @@ SD power-loss durability, and complete external timing/latency qualification.
 See [release status](docs/release-status.md), [validation](docs/validation.md),
 and the [detailed development record](DEVELOPMENT.md). This preview is not a
 finished universal-compatibility release.
+
+The newer stock-Main candidate passes 84 integrated language/format/frontend
+loads with exact cartridge bytes and full scaler RGB comparisons, separate
+ten-minute player/Studio music soaks, synthetic mouse/OSD checks, startup/reload
+and private Studio Save workflows, and native bad-cartridge/worker recovery.
+Its current binaries still need human picture/stereo and physical-control
+confirmation. Candidate installer bundles include a checksum-bound
+`docs/TIC-80/qualification.json` identifying the exact payloads, bounded
+evidence and outstanding checks. Packaging these records does not transfer
+the older prototype's physical qualification to the new binaries.
 
 ## Credits and license
 

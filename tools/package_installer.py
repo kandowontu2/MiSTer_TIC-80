@@ -36,6 +36,14 @@ def build(package, output):
         source = package / "sd-card" / path
         if digest(source) != manifest["files"][path]["sha256"]:
             raise ValueError(f"Input checksum failed: {path}")
+    qualification = None
+    if "qualification_sha256" in manifest:
+        qualification = package / "qualification.json"
+        if digest(qualification) != manifest["qualification_sha256"]:
+            raise ValueError("Qualification checksum failed")
+        record = json.loads(qualification.read_text(encoding="utf-8"))
+        if record["payload_sha256"] != {path: manifest["files"][path]["sha256"] for path in paths}:
+            raise ValueError("Qualification describes different payloads")
     archive = Path(str(output) + ".zip")
     if output.exists() or archive.exists():
         raise FileExistsError("Use a fresh output path; existing packages are immutable")
@@ -68,10 +76,13 @@ def build(package, output):
         content = content.replace('(licenses/)', '(../../Scripts/TIC80-install/licenses/)')
         (documentation / source.name).write_text(content, encoding="utf-8", newline="\n")
     shutil.copytree(REPO / "docs/images", documentation / "images")
+    if qualification is not None:
+        shutil.copyfile(qualification, documentation / "qualification.json")
     status = {
         "kind": "development-installer", "shared_main_included": False,
         "shared_main_replaced": False, "stock_main_hardware_qualified": False,
         "release_accepted": False, "input_manifest_sha256": digest(package / "manifest.json"),
+        "bounded_runtime_evidence_included": qualification is not None,
         "note": "Installer checks are separate from stock-Main runtime qualification, which remains pending.",
         "files": {p.relative_to(output).as_posix(): digest(p)
                   for p in sorted(output.rglob("*")) if p.is_file()},

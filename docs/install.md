@@ -71,3 +71,11 @@ licenses, records its input manifest and pending stock-Main qualification, and
 checks all archive CRCs and file hashes. It refuses to overwrite an existing
 package. No unpublished GitHub download URL or update_all registration is
 assumed; the ZIP installs offline.
+
+A candidate package can additionally provide `qualification.json`, with its
+SHA-256 in the input manifest's `qualification_sha256` field. The builder
+verifies that record's checksum and exact five `payload_sha256` values before
+including it in `docs/TIC-80`. The record distinguishes bounded automated
+runtime evidence from current-binary human and physical checks. Its inclusion
+does not change the installer's pending full-qualification or release-acceptance
+flags; a source prototype's qualification is never inherited automatically.
