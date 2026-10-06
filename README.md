@@ -38,7 +38,7 @@ These images are not proof of stock-Main qualification or photographs of HDMI.
 
 **Studio startup console — desktop render**
 
-<img src="docs/images/studio-console.png" width="768" alt="TIC-80 Studio console on MiSTer">
+<img src="docs/images/studio-console.png" width="768" alt="TIC-80 Studio startup console rendered on desktop with modeled MiSTer transport">
 
 **Code editor**
 

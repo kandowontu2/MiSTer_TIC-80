@@ -7,8 +7,9 @@ Frontier's normal handler discovery. The separate development installer ZIP
 omits Main, passes thirteen local installer/package checks and a read-only
 bundle check on the MiSTer. It is not a claim of completed standard-Main
 runtime qualification; see [installation](install.md).
-The October 5 package is a qualified prototype that includes a patched Main;
-its hardware qualification does not yet prove the standard-Main release target.
+The separate, frozen October 5 prototype package includes a patched Main;
+its hardware qualification does not establish the standard-Main release target.
+The public Frontier preview omits Main and labels that qualification as pending.
 
 ## Why the prototype patches Main
 
@@ -47,7 +48,7 @@ are identical to unmodified pinned Main. Evidence is
 `build/stock-main-transport-progress-20261005.json`; the original log and
 generated transport sources are retained. No MiSTer hardware is accessed.
 
-Before making a standard-Main package available, verify both frontends on an
+Before qualifying the standard-Main preview as a finished release, verify both frontends on an
 unmodified supported Main, including actual cartridge loading/switching,
 Studio source/save behavior, startup/MGL/reset/reload, all requested controls,
 audio and HDMI. Then make the default manifest omit Main and make its installer
@@ -65,3 +66,28 @@ do not prove stock-Main runtime behavior or a core incompatibility. Neither
 changed the shared Main file. Their original results remain under
 `build/stock-main-native-smoke-20261005` and
 `build/stock-main-native-smoke-v2-20261005`.
+
+A subsequent native check ran official `MiSTer_20260912` in a private mount
+namespace, bound to Main's configured path only inside that namespace. The
+shared executable's bytes and the outside namespace stayed unchanged. The
+running Main executable matched SHA-256
+`9f6e5a237c36be6404ab4823d804821491db4bf125827f84aca2a1ca31f0a8a6`.
+Studio loaded Tetris through its MGL, acknowledged all 25,147 cartridge bytes
+and correctly reported an empty source path. A ten-second observation recorded
+272 audio samples, zero underruns and 481,294 played frames. Four HDMI register
+observations measured the expected 74.25 MHz clock for 720p/60.
+
+That coordinator (65843) exited 1 during restoration: its single-Main guard
+caught a transient restart after returning to MENU. Preserve that failure;
+it was not an end-to-end passing run. A separate restoration coordinator
+(30000) waited for Main to settle, restored the installed prototype and Tetris,
+and exited 0 after checking the original source acknowledgement, outside mount
+namespace, payload hashes, audio and HDMI clock. The unsaved Studio cartridge
+was backed up with an exact full-cartridge round trip before the core switch.
+Evidence is retained in
+`build/stock-main-namespace-native-smoke-v2-20261005` and
+`build/stock-main-namespace-restoration-v2-20261005`.
+
+This establishes a narrow native stock-Main Studio loading/playback check.
+It does not qualify the player, startup/reset corner cases, source-save
+workflow or the proposed per-core horizontal-wheel path.
