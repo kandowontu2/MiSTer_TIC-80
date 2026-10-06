@@ -80,6 +80,18 @@ original run remains preserved. These binaries remain private; exact-binary
 music/resource, physical controls, human output confirmation and broader
 release qualification still remain. See [standard-Main compatibility](stock-main.md).
 
+Both current exact binaries now pass fresh ten-minute automated music/resource
+soaks with zero underruns, flat sampled memory and one BOOT each. Their native
+production-worker matrix passes all 84 language/format/frontend cases, 168
+exact RGBA frames and 5,040 PCM buffers. Both also pass nine synthetic native
+mouse/OSD stages with stock Main. Independent reviews verify original jobs and
+normal installed-Studio restoration; MiSTer, settings and games are preserved.
+Installer and corresponding-source ZIPs are prepared privately with complete
+credits and screenshots. Human picture/stereo and physical-controls questions
+remain pending; the latest inventory detects only the virtual keyboard. No
+candidate payload is installed or published by these tests. See
+[standard-Main compatibility](stock-main.md) for exact receipts and scope.
+
 ## Historical prototype qualification
 
 Matched build `18de1e89` was previously installed in the normal SD-card

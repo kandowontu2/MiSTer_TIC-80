@@ -675,3 +675,51 @@ the owner restores the installed TIC-80 Studio afterward. Evidence is
 empty-core-name guard failure occurs before candidate launch and is preserved
 separately. This passing gate does not replace the remaining exact-binary
 music/resource, physical-input, human HDMI/stereo or broader release gates.
+
+
+### October 6: current-frontends sustained playback and input checks
+
+The same default player `2a03b849` and Studio `e3613638`, with private RBF
+`5595ba32` and official stock Main `9f6e5a23`, now pass a fresh ten-minute
+music/resource test each. Both original monitors collect 3,047 samples over
+600 seconds with zero underruns, one cartridge BOOT and flat sampled parent
+and interpreter memory. Measured audio clocks are 47,999.254 and 47,999.236 Hz;
+fitted queue drift is -0.343 and -0.012 ms. Both HDMI checks infer 74.25 MHz.
+The four original frontend/monitor jobs exit 0, and independent review verifies
+normal installed-Studio restoration, protected files, games-folder metadata,
+source caches and Frontier resumption. Receipts are
+`build/mgl-music-native-v1-20261006`,
+`build/mgl-music-native-review-v1-20261006` and
+`build/mgl-music-owner-v1-20261006`.
+
+Fresh native production-worker helpers also exercise these exact default
+binaries across all fourteen languages and three cartridge formats, for 84
+cases. All 168 full RGBA frames and 5,040 PCM tick buffers match frozen
+references. Six original preparation/matrix jobs exit 0. The independent
+review verifies the 84 original workers, logs, payload identities and unchanged
+installed Studio/Main. This direct-worker test never maps DDR or changes the
+selected core; it does not replace Main/FPGA cartridge integration or physical
+output testing. Receipts are `build/native-runtime-matrix-board-v3-20261006`
+and `build/native-runtime-matrix-board-review-v3-20261006`. The earlier v2
+helper preparation attempted to invoke a Linux compiler from Windows Python;
+that failure is preserved, and the fresh v3 build succeeds under WSL.
+
+Both exact frontends additionally pass nine native synthetic mouse API stages
+with actual stock Main owning evdev, including horizontal scrolling, stalled
+device isolation and real OSD epoch suppression. All four original probe/
+frontend jobs exit 0. Independent review verifies their raw observations,
+restoration, all nine protected files, source caches, Frontier and 4,377
+unchanged games-folder metadata rows. Installed Studio is restored normally.
+Receipts are `build/mgl-hid-native-v1-20261006`,
+`build/mgl-hid-native-review-v1-20261006` and
+`build/mgl-hid-owner-v1-20261006`. Synthetic reports do not qualify the user's
+physical controller, mouse or Bluetooth keyboard.
+
+The next candidate's installer and corresponding-source ZIPs are prepared
+privately and independently reviewed, with all five payload identities,
+49 license notices and five screenshots. Source packaging now accepts a
+checksum-bound per-core candidate manifest while retaining the first-preview
+default. These ZIPs remain private; the published release and installed
+payloads are unchanged. Current-binary human picture/stereo confirmation and
+physical controls are still pending. Linux's latest physical inventory contains
+only MiSTer's virtual keyboard; no human input is injected or credited.
