@@ -6,6 +6,7 @@
 #include "tic80_mister/input.h"
 #include "tic80_mister/live_log.h"
 #include "tic80_mister/memory_map.h"
+#include "tic80_mister/main_launch.h"
 #include <errno.h>
 #include <sched.h>
 #include <signal.h>
@@ -43,7 +44,7 @@ static int load(tm_studio_session *studio,const char *path) {
 int main(int argc,char **argv) {
     if(argc>=2 && !strcmp(argv[1],"--hid-wheel-worker")) return tm_hid_wheel_worker(argc,argv);
     if(argc>=2 && !strcmp(argv[1],"--studio-worker")) return tm_studio_session_worker(argc,argv);
-    const char *folder=NULL,*cart=NULL,*memory=NULL,*core_name=NULL,*saves=NULL;
+    const char *folder=NULL,*cart=NULL,*memory=NULL,*core_name=NULL,*saves=NULL,*main_processes=NULL;
     unsigned long limit=0,pulse=0; int run=0;
     tm_fft_config capture={0};
     for(int i=1;i<argc;++i) {
@@ -56,6 +57,7 @@ int main(int argc,char **argv) {
         else if(!strcmp(option,"--cart")) cart=value;
         else if(!strcmp(option,"--memory")) memory=value;
         else if(!strcmp(option,"--core-name")) core_name=value;
+        else if(!strcmp(option,"--main-processes")) main_processes=value;
         else if(!strcmp(option,"--fft-device")) { if(tm_fft_configure(&capture,value)) goto usage; }
         else {
             char *end; errno=0; unsigned long n=strtoul(value,&end,0);
@@ -65,7 +67,7 @@ int main(int argc,char **argv) {
             else goto usage;
         }
     }
-    if(!folder || (run&&!cart) || (core_name&&!memory)) goto usage;
+    if(!folder || (run&&!cart) || ((core_name||main_processes)&&!memory)) goto usage;
     if(!memory) {
         // Keep playback and interpretation off CPU 0's USB/SD interrupts.
         // Ordinary nice priorities let publication preempt interpretation;
@@ -92,6 +94,7 @@ int main(int argc,char **argv) {
     int reset_held=0,reset_resume=0;
     unsigned long reset_holds=0,reset_runs=0;
     int reconnecting=0,reload_pending=0,generation_valid=0;
+    int mgl_wait=0;
     uint32_t previous_status=0; tm_core_generation generation={0};
     unsigned long reloads=0; uint64_t reload_started=0;
     unsigned output_failures=0; unsigned long output_flushes=0;
@@ -133,7 +136,9 @@ int main(int argc,char **argv) {
             tm_live_log_printf(logs,"Studio FPGA session lost; retaining last ACK\n");
         }
         uint32_t status=reconnecting?0:tm_backend_status(&backend);
-        int held=reload_pending || (status&1);
+        int initialized_now=0;
+        int reset_released=!(status&1) && (previous_status&1);
+        int held=reload_pending || mgl_wait || (status&1);
         if(held && !reset_held) {
             ++reset_holds;
             reset_resume|=tm_studio_session_mode(studio)==TIC_RUN_MODE ||
@@ -173,13 +178,20 @@ int main(int argc,char **argv) {
                 if(!(status&1) && ((previous_status&1) ||
                     (observed==1 && generation_valid && memcmp(&generation,&next,sizeof next)))) {
                     reload_pending=0;
+                    initialized_now=1;
+                    if((!memory || main_processes) && transfer<=0 && !queued_cart) {
+                        int launch=tm_main_initial_cart(main_processes);
+                        mgl_wait=launch!=0;
+                        if(mgl_wait) tm_live_log_printf(logs,"Studio waiting for initial MGL cartridge; launch_context=%d\n",launch);
+                    }
                     tm_live_log_printf(logs,"Studio MiSTer initialization ready\n");
                 }
             }
         }
+        if(mgl_wait && (transfer>0 || (reset_released && !initialized_now))) mgl_wait=0;
         if(online) {
             previous_status=status;
-            reset_held=reload_pending || (status&1);
+            reset_held=reload_pending || mgl_wait || (status&1);
             if(!reload_pending) generation_valid=tm_backend_core_generation(&backend,&generation)==1;
         }
         if(online && transfer>0) {

@@ -32,6 +32,12 @@ https://github.com/MiSTer-devel/Main_MiSTer
 The candidate stages the committed source, preserves its source headers and
 LICENSE, and retains third-party library licenses in the full build tree.
 
+The per-core launch-context reader uses SXMLC version 4.2.7, Copyright (c) 2010
+Matthieu Labas, under its BSD two-clause license. vendor/sxmlc contains sxmlc.c and sxmlc.h from the same pinned Main commit, exact file hashes and the
+original license. Printing helpers use explicit literal-string format
+specifiers; the parser is unchanged. This parser is linked into the TIC-80 frontends; Main itself
+is neither linked nor replaced. See licenses/sxmlc/LICENSE.
+
 The statically linked TIC-80 runtime and optional console/editors originate from nesbox/TIC-80 at commit
 4dba5bc2640d9cde650fb0b427c9be6aab598de9 and retains its MIT license.
 https://github.com/nesbox/TIC-80

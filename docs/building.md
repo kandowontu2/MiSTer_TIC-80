@@ -11,6 +11,12 @@ licenses. See [credits](../CREDITS.md) and [NOTICE](../NOTICE).
 | [MiSTer_PICO-8 platform](https://github.com/MiSTerOrganize/MiSTer_PICO-8) | `72cb0405417d506c33e59ab51c1a374fc4db649e` |
 | [Frontier](https://github.com/MiSTerOrganize/MiSTer_Frontier) | `a7c61e0a000d9dfd40235e638229e06a603534d5` (vendored daemon) |
 | [Main](https://github.com/MiSTer-devel/Main_MiSTer) (optional development tests) | `5a3a08662c25bd792043f8a8fb48e4be12099beb` |
+| SXMLC 4.2.7 (vendored parser) | Same Main revision; exact original and vendored hashes in `vendor/sxmlc/SOURCE.json` |
+
+The frontends use the vendored BSD-licensed SXMLC parser to read Main's MGL
+launch context. No Main checkout is needed for that runtime component.
+Its parser is unchanged; printing helpers use explicit literal-string format
+specifiers. Original copyright and license notices are retained.
 
 On Linux, install CMake, a C/C++ compiler, Git, Python 3, Ruby/rake, and Verilator
 for RTL tests. Runtime tests need QEMU when using an ARM cross build. Bootstrap

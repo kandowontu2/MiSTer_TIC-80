@@ -15,7 +15,8 @@ def collect():
                (UPSTREAM / "LICENSE", "TIC-80/LICENSE"),
                (ROOT / "reference/pico8/LICENSE", "MiSTer_PICO-8/LICENSE"),
                (ROOT / "vendor/MiSTer_Frontier/LICENSE", "MiSTer_Frontier/LICENSE"),
-               (ROOT / "assets/LICENSE.cacert", "Mozilla-CA/LICENSE")]
+               (ROOT / "assets/LICENSE.cacert", "Mozilla-CA/LICENSE"),
+               (ROOT / "vendor/sxmlc/LICENSE", "sxmlc/LICENSE")]
     components = ["lua", "moonscript", "yuescript", "squirrel", "quickjs", "pocketpy", "wren",
                   "janet", "wasm3", "mruby", "miniscript2", "pforth", "blip-buf", "libpng",
                   "zlib", "giflib", "zip", "argparse", "jsmn", "dirent", "dlfcn"]

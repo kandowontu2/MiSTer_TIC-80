@@ -584,3 +584,42 @@ BOOT. Its offline negative controls reject increments, decrements and resets.
 Both current default runtime binaries still exhibit the startup defect; a
 per-core synchronization fix is required before release qualification. The
 shared Main and installed preview remain unchanged.
+
+
+## Per-core delayed-MGL startup correction (October 6)
+
+The source now holds a retained cartridge after Main initializes a new FPGA
+when Main's first valid MGL action loads F0/F64. The frontends locate the single
+stock Main executable through `/proc`, read its RBF and optional XML launch
+arguments (MGL is `argv[2]`), and use the vendored SXMLC parser with Main's
+first-valid-action rules. Reads are bounded to 8 KiB of arguments and 64 KiB of
+XML. A missing or ambiguous launch context stays held; elapsed time never
+permits cached BOOT. A real transfer, including a rejected transfer, or a later
+user reset releases the wait. Raw RBF reloads and first-reset MGLs keep their
+one-restart behavior. Main and the FPGA protocol are unchanged.
+
+The final SDK/default rebuild is `build/mgl-frontends-v3-20261006/result.json`:
+player `b72812952e3bf472708e4c91c48eb90735a5e2767eaf4e9fd8b846f41a4d749b`,
+Studio `b2e558e474e227b3fa03ae6504f75e23cef310ccf3ac12dc10445244f66d1947`.
+Its ELF hashes exactly match the tested final binaries. The earlier complete
+37-test ARM/QEMU regression passes; after the player waiting-message change,
+all 16 affected registered cases pass on the final binaries, followed by both
+new rejected-initial-transfer cases. These exercise real frontend/interpreter
+IPC, exact BOOT counters, CRC-valid saves, delayed replacement, missing MGL,
+explicit reset cancellation, departure and SIGTERM. The previous production
+binaries fail the same counter oracle with BOOT=2 before replacement arrives.
+Receipts are `build/mgl-startup-local-v2-20261006`,
+`build/mgl-startup-local-v3-20261006`, `build/mgl-startup-local-v4-20261006`, and
+`build/mgl-startup-negative-v1-20261006`. Original failed harness preparation
+is preserved separately; it never ran the runtime tests.
+
+A native read-only launch-context check also passes on the MiSTer while keeping
+Main PID 18493 and installed Studio PIDs 18525/18552 alive, with unchanged
+protected payloads. Its original journaled job returns raw-launch classification
+0, matching the actual two-argument Main launch. Evidence is
+`build/main-launch-native-context-v2-20261006/result.json`; the initial guard's
+wrong handler pathname failed before any hardware mutation and is preserved.
+This check does not qualify delayed-MGL switching on the FPGA. The stronger
+native lifecycle gate, current physical controls, exact-candidate human output
+confirmation and the broader validation gates remain open. The published
+preview and installed frontends remain unchanged.

@@ -1,0 +1,17 @@
+{
+  "repository": "https://github.com/MiSTer-devel/Main_MiSTer",
+  "revision": "5a3a08662c25bd792043f8a8fb48e4be12099beb",
+  "version": "4.2.7",
+  "files_sha256": {
+    "sxmlc.c": "09440b10b04e77d352cd80df6e43054a983dc6bebaf43083af0a1ac6ea2e83af",
+    "sxmlc.h": "f80f4d4ac526fd32a3562217b0980e1f01dc3484fa4382656e2667811ff96c3a"
+  },
+  "modifications": [
+    "Printing helpers use explicit %s/%ls format strings for literal separators; the parser is unchanged."
+  ],
+  "vendored_files_sha256": {
+    "sxmlc.c": "a32cea005b18d7098c49ad4318a6d58e547b711e081966df85d41c1c352496e6",
+    "sxmlc.h": "f80f4d4ac526fd32a3562217b0980e1f01dc3484fa4382656e2667811ff96c3a",
+    "LICENSE": "4a90a5a72338f3a85a49c59dee2877406f3abab69f21ada134df9f7c4dd92029"
+  }
+}

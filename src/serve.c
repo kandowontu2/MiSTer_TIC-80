@@ -7,6 +7,7 @@
 #include "tic80_mister/input.h"
 #include "tic80_mister/vm.h"
 #include "tic80_mister/memory_map.h"
+#include "tic80_mister/main_launch.h"
 #include <errno.h>
 #include <signal.h>
 #include <sched.h>
@@ -142,7 +143,7 @@ int tm_serve(int argc, char **argv)
         fprintf(stderr, "Usage: %s --serve save_directory [--fft | --fft-device name] [--memory fixture [--core-name fixture]] [--ticks N] [--pulse mask]\n", argv[0]);
         return 2;
     }
-    const char *memory_file = NULL, *core_name_file = NULL;
+    const char *memory_file = NULL, *core_name_file = NULL, *main_processes = NULL;
     unsigned long limit = 0, pulse = 0;
     tm_fft_config capture={0};
     for (int i = 3; i < argc; ++i) {
@@ -150,6 +151,7 @@ int tm_serve(int argc, char **argv)
         if (i + 1 >= argc) return 2;
         if (!strcmp(argv[i], "--memory")) memory_file = argv[i+1];
         else if (!strcmp(argv[i], "--core-name")) core_name_file = argv[i+1];
+        else if (!strcmp(argv[i], "--main-processes")) main_processes = argv[i+1];
         else if (!strcmp(argv[i], "--fft-device")) { if(tm_fft_configure(&capture,argv[i+1])) return 2; }
         else {
             char *end;
@@ -163,7 +165,7 @@ int tm_serve(int argc, char **argv)
         ++i;
     }
     // Selection injection is a fixture facility, never a physical-core override.
-    if (core_name_file && !memory_file) return 2;
+    if ((core_name_file || main_processes) && !memory_file) return 2;
     if (!memory_file) {
         /* MiSTer's Main runs on CPU 1. Keep the player and the interpreter it
          * spawns on CPU 0 so screenshot compression cannot compete with the
@@ -208,6 +210,7 @@ int tm_serve(int argc, char **argv)
     tm_core_generation generation = {0};
     int generation_valid = tm_backend_core_generation(&backend, &generation) == 1;
     int reload_pending = 0;
+    int mgl_wait = 0;
     u64 reload_started = 0;
     u64 pause_started = 0, notice_until = 0;
     unsigned long ticks = 0, game_ticks = 0;
@@ -218,6 +221,7 @@ int tm_serve(int argc, char **argv)
         if (selected < 0) { reset_trace(&backend, "selection-unavailable", 0, previous_status, ticks); transport_failed = 1; break; }
         uint32_t status = tm_backend_status(&backend);
         int reset_released = !(status & 1) && (previous_status & 1);
+        int initialized_now = 0;
         int pending = tm_backend_cart_pending(&backend);
         int reset_cart = force_reset || (!(status & 1) && (previous_status & 1) && cached);
         if (reset_cart) reset_trace(&backend, force_reset ? "forced-reset" : "reset-release", status, previous_status, ticks);
@@ -249,19 +253,39 @@ int tm_serve(int argc, char **argv)
                 reset_trace(&backend, "main-initialization-ready", status, previous_status, ticks);
                 reload_pending = 0;
                 reset_cart = cached != NULL;
+                initialized_now = 1;
+                if ((!memory_file || main_processes) && !pending) {
+                    int launch = tm_main_initial_cart(main_processes);
+                    mgl_wait = launch != 0;
+                    if (mgl_wait) {
+                        fprintf(stderr, "Waiting for initial MGL cartridge; launch_context=%d\n", launch);
+                        if (!pause_started) pause_started = real_counter(NULL);
+                        if (reset_screen) {
+                            tic80_delete(reset_screen);
+                            reset_screen = screen(launch < 0 ? "MGL file unavailable" : "Loading MGL cartridge",
+                                                  "Load a cart or reset to cancel");
+                            if (!reset_screen) { failed = 1; break; }
+                        }
+                    }
+                }
             } else if (real_counter(NULL) - reload_started > 10000000000ULL) {
                 fprintf(stderr, "MiSTer initialization did not complete\n");
                 transport_failed = 1;
                 break;
             }
         }
+        // Main's initialization reset is released before its delayed MGL
+        // action. Only an actual ticket or a subsequent user reset releases
+        // this extra hold. A timeout cannot authorize cached cartridge BOOT.
+        if (mgl_wait && (pending > 0 || (reset_released && !initialized_now))) mgl_wait = 0;
         // Main also asserts reset while replacing a core. Hold the cartridge
         // until release, so a departure cannot run an extra BOOT/save cycle.
-        if ((status & 1) || reload_pending) {
+        if ((status & 1) || reload_pending || mgl_wait) {
             pending = reset_cart = 0;
             if (!reset_screen) {
                 reset_trace(&backend, "reset-hold-enter", status, previous_status, ticks);
-                reset_screen = reload_pending ? screen("Reloading core", "Waiting for MiSTer initialization") :
+                reset_screen = mgl_wait ? screen("Loading MGL cartridge", "Load a cart or reset to cancel") :
+                    reload_pending ? screen("Reloading core", "Waiting for MiSTer initialization") :
                     screen("Reset held", "Release reset to restart");
                 if (!reset_screen) { failed = 1; break; }
                 if (restart_transport(&backend, NULL)) { reset_trace(&backend, "hold-restart-failed", status, previous_status, ticks); transport_failed = 1; break; }

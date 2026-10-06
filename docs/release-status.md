@@ -58,6 +58,16 @@ and the driver now rejects it. Startup synchronization therefore remains a
 known runtime defect requiring a per-core fix; full qualification is false.
 See `stock-main.md` for receipts and the corrected verification scope.
 
+The per-core startup fix is now implemented and passes local validation in
+player `b7281295` and Studio `b2e558e4`. Both hold cached execution during the
+initial MGL delay, permit reset cancellation, handle rejected transfers, and
+retain raw-reload behavior. The previous frontends fail the exact BOOT-counter
+negative control. A native read-only launch-context check passes while the
+installed Studio session stays running. Full native MGL qualification of these
+new binaries is still pending; no installed payload or release was replaced.
+SXMLC attribution, original license and pinned provenance are included. See
+[standard-Main compatibility](stock-main.md) for the exact receipts and scope.
+
 ## Historical prototype qualification
 
 Matched build `18de1e89` was previously installed in the normal SD-card
@@ -157,7 +167,7 @@ passes. The first player's failed checkpoint coverage remains preserved.
 The fresh delayed native RUN-read test also passes: ten silent PCM snapshots,
 nine unchanged complete-frame snapshots, the cancelled save preserved and
 an explicit retry to BOOT 10. Observed worker departure is bracketed at
-235.577–254.448 ms. Lifecycle coordinator 19791 stops after 27 completed steps
+235.577â€“254.448 ms. Lifecycle coordinator 19791 stops after 27 completed steps
 when diagnostic `ls -l` races a closing descriptor. It exits 1 and verifies
 canonical restoration; this does not qualify the full suite. The failure and
 original observer are sealed in
@@ -167,7 +177,7 @@ the unchanged descriptor-count limit still rejects persistent growth. Its
 regression and registered CTest pass. Fresh coordinator 23309 completes the
 same four-cycle suite with source-bound observer bytes and native status 0.
 All four cold entries, twelve cartridge selections and sixty-four raw reloads
-pass with BOOT counts 1–76, CRC-valid saves, retained same-core supervisors,
+pass with BOOT counts 1â€“76, CRC-valid saves, retained same-core supervisors,
 unchanged memory/descriptor limits and zero observed audio underruns. All
 original monitor jobs are collected with status 0. Canonical binaries/settings,
 Tetris, HDMI and audio are verified restored at that suite's end. Evidence is
@@ -188,7 +198,7 @@ durability. Four Main TERM/KILL cases also pass for Studio and player.
 Original coordinator 11040 exits 0 and verifies canonical restoration. Healthy
 playback continues while Main is absent; each explicit restart against the
 loaded FPGA produces one initialization BOOT and retains the supervisor and
-CRC-valid save/sentinel. Actual BOOT counts are 1–8. This does not claim an
+CRC-valid save/sentinel. Actual BOOT counts are 1â€“8. This does not claim an
 automatic system Main restart or a kill during SPI/cart transfer. Evidence is
 recorded in `build/platform-audio-reset-main-exit-progress-20261004.json`.
 The rollback can start a missing test-owned Main before using the command FIFO;
@@ -278,9 +288,9 @@ it does not prove the original board delay's root cause. Original coordinator
 jobs are each collected with status 0. Independent raw review verifies the
 unchanged early/late byte windows, successful single signal calls, same pending
 transfer/session at departure, actual save CRCs and retained sentinel, exact
-BOOT counts 1–24, retained supervisors, valid source-ticket retries and HDMI.
+BOOT counts 1â€“24, retained supervisors, valid source-ticket retries and HDMI.
 All 4,960 sampled case audio records have zero underruns. Snapshot-to-signal
-return intervals are 33,051–66,591 ns; they bound the observed syscall interval,
+return intervals are 33,051â€“66,591 ns; they bound the observed syscall interval,
 not the exact SPI edge or physical signal boundary. Canonical Main/handler,
 payload/settings, Tetris, audio and HDMI are verified restored. Full raw review
 is sealed in `build/main-transfer-probe-v4-progress-20261005.json`.
@@ -309,7 +319,7 @@ transfer-test release is issued. This does not qualify broader workloads,
 physical signal continuity or a board network outage.
 
 Independent offline input coverage now finds defects in the frozen runtime
-bindings: Wren `btnp()` aliases controller IDs 16–31 to 0–15; Ruby rejects
+bindings: Wren `btnp()` aliases controller IDs 16â€“31 to 0â€“15; Ruby rejects
 Escape/function/keypad IDs and returns a truthy numeric zero for default
 `keyp()`; Scheme and Janet default keyboard queries use byte 255 instead of
 the core's any-key sentinel. Working-source repairs retain the pinned checkout.
@@ -718,7 +728,7 @@ close a broader gate.
 
 | Gate | Current evidence | Still unverified |
 | --- | --- | --- |
-| Transport, restart and profiling | Shared-reset RBF `fd673c65`: bounded Studio/player music phases pass with zero underruns, valid saves and flat sampled memory. Fresh delayed RUN-read recovery passes; observed worker disappearance is bracketed at 235.577–254.448 ms. Studio and player parent TERM/KILL tests pass automatic daemon relaunch, old-worker departure and valid save/retry checks. Four Main TERM/KILL cases pass healthy playback while absent and explicit restart with retained supervisor and one BOOT. Fresh lifecycle testing passes four cold entries, twelve selections and sixty-four reloads, with exact BOOTs 1–76, unchanged memory/descriptor limits and canonical restoration. All 16 Studio file/hang/worker-kill checkpoints pass on this RBF. Digital transport retry passes 858 GPIO interruption points and rejects a prefix-accepting mutant; ten transport regressions and final DDR drain pass. | Broader transport faults, every physical transfer edge, workload/clock-drift profiling and longer varied sessions. The one-hour Studio/player music/save soak passes independent raw review with zero observed underruns and flat sampled steady RSS. Main recovery uses explicit restart; the digital cut suite does not model full Main initialization. Sampled worker disappearance does not identify an exact cancellation timestamp. |
+| Transport, restart and profiling | Shared-reset RBF `fd673c65`: bounded Studio/player music phases pass with zero underruns, valid saves and flat sampled memory. Fresh delayed RUN-read recovery passes; observed worker disappearance is bracketed at 235.577â€“254.448 ms. Studio and player parent TERM/KILL tests pass automatic daemon relaunch, old-worker departure and valid save/retry checks. Four Main TERM/KILL cases pass healthy playback while absent and explicit restart with retained supervisor and one BOOT. Fresh lifecycle testing passes four cold entries, twelve selections and sixty-four reloads, with exact BOOTs 1â€“76, unchanged memory/descriptor limits and canonical restoration. All 16 Studio file/hang/worker-kill checkpoints pass on this RBF. Digital transport retry passes 858 GPIO interruption points and rejects a prefix-accepting mutant; ten transport regressions and final DDR drain pass. | Broader transport faults, every physical transfer edge, workload/clock-drift profiling and longer varied sessions. The one-hour Studio/player music/save soak passes independent raw review with zero observed underruns and flat sampled steady RSS. Main recovery uses explicit restart; the digital cut suite does not model full Main initialization. Sampled worker disappearance does not identify an exact cancellation timestamp. |
 | Physical input and audible cartridges | Current build `18de1e89` passes physical Xbox, mouse and 22-key Bluetooth keyboard diagnostics, including separate WASD/Enter/Esc/Q/E, modifier chords, repeat and releases. Both frontends pass ten-minute music tests with fresh human picture/stereo confirmation. | Broader peripherals, four-controller sessions, audible cartridges and physical Studio editor workflows. |
 | Timing, CDC and external I/O | Shared-reset candidate passes all 140 internal checks and six source-bound fitted audits; minimum internal slack is 0.118 ns. The fitted shared-reset consumer audit covers 398 consumers at each of four corners. All 116 custom chains have calculated MTBF at four corners. Both scaler divider stages have equivalence evidence. Compiler startup, exact-enable I2S formal assertions, pulse simulations and 4,096 full-pipeline reset/rate cases pass. Conditional zero-skew HDMI and I2S output checks are positive. | Full platform/reset CDC, physical qualification, complete external-I/O modeling, unconstrained external endpoints and physical metastability qualification remain. Conditional checks do not measure PCB skew, clock jitter or physical receiver timing. |
 | Display modes and latency | Current Studio and player have confirmed Samsung HDMI picture/stereo at 720p/60. Final installed Tetris measures 74.25 MHz with zero measured clock error and zero audio underruns in its bounded check. | Analog/CRT modes, broader HDMI geometry, tearing, latency and long-session signal behavior. Published frame/PCM checks do not replace physical capture. |
@@ -772,7 +782,7 @@ The same frozen I2S candidate also passes a new ten-second injected native
 RUN-save read. Ten coherent PCM observations remain silent and seven complete
 frame observations retain the same CRC during the guarded read window. The
 cancelled save remains unchanged, and an explicit retry reaches BOOT 10 with
-zero audio underruns. Worker disappearance is bracketed at 233.461–248.531 ms;
+zero audio underruns. Worker disappearance is bracketed at 233.461â€“248.531 ms;
 the trace does not measure an exact cancellation timestamp. Original coordinator
 session 18380 and its bounded observer exit 0. Canonical Main/handler/payloads,
 settings, Tetris, HDMI and audio are verified restored at that suite's end.
@@ -782,7 +792,7 @@ restoration does not describe the board during a later private test.
 
 The fresh I2S lifecycle coordinator, original session 68306, exits 0 after four
 cold entries, twelve native/modern-PNG/legacy-PNG selections and sixty-four raw
-FPGA reloads. Actual saved BOOT counts are exactly 1–76. Each cold entry has a
+FPGA reloads. Actual saved BOOT counts are exactly 1â€“76. Each cold entry has a
 different supervisor; all selections/reloads within that cycle retain it.
 All 12,400 settled audio samples and 4,601 coherent transition samples have
 zero underruns. Sampled parent/worker RSS stays within the 128/256 KiB steady
@@ -968,7 +978,7 @@ cancelled save and retries to BOOT 10. All 167 completed audio observations have
 zero underruns. Canonical Main/launcher/payloads/settings, Tetris, HDMI and audio
 are verified restored. Evidence is sealed in
 `build/second-stage-divider-fast-observer-native-bd57eebb/archive-manifest.json`.
-Worker disappearance is bracketed at 242.106–258.011 ms, without proving an
+Worker disappearance is bracketed at 242.106â€“258.011 ms, without proving an
 exact cancellation timestamp. A separate corrected receipt fixes inherited
 explanatory prose while preserving the original sealed trace and correct
 numerical bracket.

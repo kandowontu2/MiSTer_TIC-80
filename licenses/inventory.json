@@ -7,7 +7,7 @@
   {
     "file": "integration/NOTICE",
     "source": "NOTICE",
-    "sha256": "995ac70a03289ebfb4d402b45d070374b7c3b14a95fd90b660fd4a3dad73f398"
+    "sha256": "2214ef0fddc068411ca9592df0a03387a9dae1da55089767b8e1324f83cb6486"
   },
   {
     "file": "TIC-80/LICENSE",
@@ -28,6 +28,11 @@
     "file": "Mozilla-CA/LICENSE",
     "source": "assets/LICENSE.cacert",
     "sha256": "3f3d9e0024b1921b067d6f7f88deb4a60cbe7a78e76c64e3f1d7fc3b779b9d04"
+  },
+  {
+    "file": "sxmlc/LICENSE",
+    "source": "vendor/sxmlc/LICENSE",
+    "sha256": "4a90a5a72338f3a85a49c59dee2877406f3abab69f21ada134df9f7c4dd92029"
   },
   {
     "file": "moonscript/LICENSE",

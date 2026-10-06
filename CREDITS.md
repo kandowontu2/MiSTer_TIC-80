@@ -52,6 +52,7 @@ also supplied there. The source archive contains the pinned dependency sources.
 | zip | kuba--/zip contributors | Original license supplied, including embedded compression notices |
 | argparse | Yecheng Fu (cofyc) | MIT |
 | jsmn | Serge A. Zaitsev | MIT |
+| SXMLC 4.2.7 | Matthieu Labas | BSD-2-Clause; XML parser from the pinned MiSTer Main source, used for read-only MGL launch context |
 | LPeg | Roberto Ierusalimschy and contributors | MIT |
 | miniaudio | David Reid and contributors | Public domain / MIT-0 alternatives retained |
 | MD5 implementation | Alexander Peslyak (Solar Designer) | Public-domain dedication with permissive fallback notice |
