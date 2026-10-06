@@ -47,6 +47,24 @@ this later installation receipt adds the real installer/Frontier acceptance
 check. Exact-current human HDMI/stereo and physical controls remain pending.
 Full release qualification is false.
 
+The current installed Studio also passes a coherent, read-only state inspection:
+its console is open and its working copy is clean. Process checks distinguish
+the VM worker from the optional horizontal-wheel helper rather than assuming
+exactly two executable processes. The physical diagnostic is prepared against
+the current published payloads, with those same hashes as its restoration
+baseline. Its recorder checks a fresh single BOOT, every required controller
+press, both mouse axes, three buttons, both wheel directions and two seconds
+with everything released. It injects no events and requires a connected
+physical gamepad and mouse before switching away from Studio. At preparation,
+Linux detects only MiSTer's virtual keyboard, so no physical test is dispatched.
+The controller-emulated WASD/Enter/Esc/Q/E counters do not qualify a physical
+keyboard's complete interface. Evidence is
+`build/studio-inspect-native-v12-20261006/result.json` and
+`build/stock-main-physical-preparation-v3-20261006.json`; the latter records
+preparation, not a physical-input pass. The recorder and process classifier
+pass six offline rejection/acceptance tests, alongside fourteen existing
+frontend-oracle checks.
+
 ## Earlier preview and candidate validation record
 
 Updated October 6, 2026 UTC. The published
