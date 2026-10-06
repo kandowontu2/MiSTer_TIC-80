@@ -41,6 +41,7 @@ class Board:
         self.fault, self.core, self.pid = fault, "PICO-8", "101"
         self.commands, self.files, self.launches = [], {}, 0
         self.original_restored = False
+        self.transient_main_reads = 0
         self.original = "/media/fat/_Other/PICO8_20251012.rbf"
         paths = ("_Other/TIC80_20261003.rbf", "games/TIC-80/TIC-80", "games/TIC-80/TIC-80-Studio",
                  "games/TIC-80/_handler.sh", "games/TIC-80/cacert.pem")
@@ -74,7 +75,15 @@ class Board:
         if command == "cat /tmp/CORENAME":
             return self.core + "\n"
         if command == "pidof MiSTer":
+            if self.fault == "transient-main" and self.transient_main_reads < 2:
+                self.transient_main_reads += 1
+                return self.pid + " 99\n"
             return self.pid + "\n"
+        if command == "cat /proc/mounts":
+            return "/dev/root /media/fat exfat rw 0 0\n"
+        if command.startswith("if test -e /proc/"):
+            digest = "0" * 64 if self.fault == "wrong-main" else driver.STOCK
+            return digest + "  /proc/101/exe\n"
         if command.startswith("sha256sum"):
             path = shlex.split(command)[-1]
             if self.original_restored and self.fault == "late-user-core-change" and path.endswith("/TIC80_20261003.rbf"):
@@ -87,7 +96,9 @@ class Board:
                 digest = self.hashes.get(path, "a" * 64)
             return digest + "  " + path + "\n"
         if command.startswith("find /media/fat/games/TIC-80/Carts"):
-            return "1:2:30:4:5:regular file /media/fat/games/TIC-80/Carts/user.tic\n"
+            inode = 8 if self.original_restored and self.fault == "inode-renumber" else 2
+            size = 31 if self.original_restored and self.fault == "cart-size-change" else 30
+            return f"1:{inode}:{size}:4:5:regular file /media/fat/games/TIC-80/Carts/user.tic\n"
         if "load_core " in command:
             tokens = shlex.split(command)
             payload = tokens[tokens.index("printf") + 2]
@@ -210,6 +221,34 @@ class NativeDriverTests(unittest.TestCase):
         self.assertEqual(result["final_core"], "Gundam EX")
         self.assertFalse(result.get("restored_verified", False))
         self.assertEqual(sum("load_core " in command for command in board.commands), 4)
+
+    def test_transient_stock_main_overlap_settles_before_mutation(self):
+        board, result, error = self.run_driver("transient-main")
+        self.assertIsNone(error)
+        self.assertTrue(result["restored_verified"])
+        self.assertEqual(board.transient_main_reads, 2)
+        self.assertEqual(board.launches, 1)
+
+    def test_exfat_inode_renumber_does_not_report_game_change(self):
+        _, result, error = self.run_driver("inode-renumber")
+        self.assertIsNone(error)
+        self.assertTrue(result["restored_verified"])
+        self.assertNotEqual(result["carts_before"], result["carts_after"])
+
+    def test_game_size_change_still_fails_restoration_check(self):
+        _, result, error = self.run_driver("cart-size-change")
+        self.assertIsNotNone(error)
+        self.assertIn("Cartridge tree changed", result["restoration_error"])
+        self.assertFalse(result.get("restored_verified", False))
+
+    def test_nonfat_inode_changes_and_fat_timestamp_changes_remain_visible(self):
+        old = "1:2:30:4:5:regular file cart.tic\n"
+        self.assertNotEqual(driver.cartridge_metadata(old, "ext4"),
+                            driver.cartridge_metadata(old.replace("1:2:", "1:8:"), "ext4"))
+        for changed in (old.replace(":30:", ":31:"), old.replace(":4:", ":6:"),
+                        old.replace(":5:", ":7:"), old.replace("cart.tic", "other.tic")):
+            self.assertNotEqual(driver.cartridge_metadata(old, "exfat"),
+                                driver.cartridge_metadata(changed, "exfat"))
 
 
 if __name__ == "__main__":

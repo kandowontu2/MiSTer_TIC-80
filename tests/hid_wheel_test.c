@@ -15,6 +15,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/ioctl.h>
+#include <sys/file.h>
 #include <sys/socket.h>
 #include <sys/stat.h>
 #include <sys/wait.h>
@@ -31,6 +32,8 @@ static int device_fd[4096];
 static char device_name[4096][32];
 static pid_t last_child;
 static int worker_process;
+static int pinned_nodes[128];
+static unsigned pinned_count;
 extern int __real_openat(int,const char *,int,...);
 extern int __real_openat64(int,const char *,int,...);
 extern int __real_close(int);
@@ -76,24 +79,52 @@ static void remember(int fd,const char *name,int flags)
     /* Opening a hidraw client begins with an empty per-client kernel queue. */
     assert(lseek(fd,0,SEEK_END)>=0);
 }
+static void block_open(int dir,const char *name)
+{
+    if(!fixture_directory(dir) || !numeric_node(name)) return;
+    char path[512];snprintf(path,sizeof path,"%s/%s.block-open",fixture,name);
+    if(!access(path,F_OK)) {for(;;) pause();}
+}
+static int kernel_lock(int exclusive)
+{
+    char path[512];snprintf(path,sizeof path,"%s/.kernel-lock",fixture);
+    int fd=open(path,O_RDONLY|O_CLOEXEC);
+    if(fd<0) {assert(errno==ENOENT);return -1;}
+    assert(!flock(fd,exclusive?LOCK_EX:LOCK_SH));return fd;
+}
+static void kernel_unlock(int fd)
+{
+    if(fd>=0) {assert(!flock(fd,LOCK_UN));assert(!__real_close(fd));}
+}
 int __wrap_openat(int dir,const char *name,int flags,...)
 {
+    block_open(dir,name);
+    int lock=fixture_directory(dir) && numeric_node(name)?kernel_lock(1):-1;
     mode_t mode=0; if(flags&O_CREAT) { va_list ap;va_start(ap,flags);mode=va_arg(ap,int);va_end(ap); }
     int fd=__real_openat(dir,name,flags,mode);
     if(fixture_directory(dir)) remember(fd,name,flags);
+    kernel_unlock(lock);
     return fd;
 }
 int __wrap_openat64(int dir,const char *name,int flags,...)
 {
+    block_open(dir,name);
+    int lock=fixture_directory(dir) && numeric_node(name)?kernel_lock(1):-1;
     mode_t mode=0; if(flags&O_CREAT) { va_list ap;va_start(ap,flags);mode=va_arg(ap,int);va_end(ap); }
     int fd=__real_openat64(dir,name,flags,mode);
     if(fixture_directory(dir)) remember(fd,name,flags);
+    kernel_unlock(lock);
     return fd;
 }
 int __wrap_close(int fd)
 {
+    int lock=fd>=0 && fd<4096 && device_fd[fd]?kernel_lock(1):-1;
+    if(fd>=0 && fd<4096 && device_fd[fd]) {
+        char path[512];snprintf(path,sizeof path,"%s/%s.block-close",fixture,device_name[fd]);
+        if(!access(path,F_OK)) {for(;;) pause();}
+    }
     if(fd>=0 && fd<4096) {device_fd[fd]=0;device_name[fd][0]=0;}
-    return __real_close(fd);
+    int result=__real_close(fd);kernel_unlock(lock);return result;
 }
 static void character(struct stat *s)
 {
@@ -175,11 +206,10 @@ static size_t descriptor_read(int fd,uint8_t *data,size_t size)
     int f=open(path,O_RDONLY);assert(f>=0);
     ssize_t n=__real_read(f,data,size);assert(n>=0);close(f);return (size_t)n;
 }
-int __wrap_ioctl(int fd,unsigned long request,...)
+static int device_ioctl(int fd,unsigned long request,void *data)
 {
     assert(worker_process);
     assert(fd>=0 && fd<4096 && device_fd[fd]);
-    va_list ap;va_start(ap,request);void *data=va_arg(ap,void *);va_end(ap);
     char logpath[512];snprintf(logpath,sizeof logpath,"%s/%s.queries",fixture,device_name[fd]);
     int log=open(logpath,O_WRONLY|O_CREAT|O_APPEND,0600);assert(log>=0);
     uint8_t query=(uint8_t)_IOC_NR(request);assert(write(log,&query,1)==1);close(log);
@@ -206,6 +236,12 @@ int __wrap_ioctl(int fd,unsigned long request,...)
     snprintf(path,sizeof path,"%s/%s.feature-%u",fixture,device_name[fd],id);
     int f=open(path,O_RDONLY);if(f<0) return -1;
     ssize_t n=__real_read(f,feature,bytes);close(f);return (int)n;
+}
+int __wrap_ioctl(int fd,unsigned long request,...)
+{
+    va_list ap;va_start(ap,request);void *data=va_arg(ap,void *);va_end(ap);
+    int lock=kernel_lock(0), result=device_ioctl(fd,request,data);
+    kernel_unlock(lock);return result;
 }
 int __wrap_posix_spawn(pid_t *pid,const char *file,const posix_spawn_file_actions_t *actions,
                        const posix_spawnattr_t *attrs,char *const args[],char *const env[])
@@ -272,6 +308,12 @@ static void device_create(const char *name,const uint8_t *desc,size_t size)
 {
     char field[64];snprintf(field,sizeof field,"%s.descriptor",name);write_file(field,desc,size);
     write_file(name,NULL,0);
+    /* The append-only regular-file transport fixes ctime at zero, because
+     * appending a report must not look like devtmpfs node replacement. Pin
+     * fixture inodes so an unlink/recreate cannot reuse that fake identity. */
+    char path[512];snprintf(path,sizeof path,"%s/%s",fixture,name);
+    assert(pinned_count<sizeof pinned_nodes/sizeof pinned_nodes[0]);
+    int fd=open(path,O_RDONLY|O_CLOEXEC);assert(fd>=0);pinned_nodes[pinned_count++]=fd;
 }
 static void probes_bounded(pid_t worker,unsigned maximum)
 {
@@ -350,7 +392,9 @@ static void lifecycle(void)
     assert(pump(s,1,6,350)==607 && last_child==previous);
     packet("hidraw6",&one,1);expect(s,1,6,608);
     assert(pump(s,1,6,3500)==608 && last_child==previous);
-    probes_bounded(previous,2);
+    /* At most one helper per each of the five present numeric device nodes,
+     * including streaming healthy nodes and stalled configuration nodes. */
+    probes_bounded(previous,5);
     packet("hidraw0",&one,1);packet("hidraw6",&one,1);expect(s,1,6,610);
     remove_file("hidraw2");remove_file("hidraw2.block");device_create("hidraw2",coarse,sizeof coarse);
     assert(pump(s,1,6,350)==610 && last_child==previous);
@@ -398,11 +442,56 @@ static void lifecycle(void)
     previous=last_child;assert(!kill(previous,SIGSTOP));
     assert(pump(s,1,6,4650)==617 && last_child!=previous);
     packet("hidraw0",&one,1);expect(s,1,6,618);
+    /* HIDraw opens/releases can wait on a kernel-wide lock held by another
+     * device's feature GET. Neither operation may stop existing motion or
+     * the reader heartbeat, even though O_NONBLOCK is set on the node. */
+    device_create("hidraw11",coarse,sizeof coarse);write_file("hidraw11.block-open",NULL,0);
+    previous=last_child;assert(pump(s,1,6,350)==618);
+    packet("hidraw0",&one,1);expect(s,1,6,619);
+    assert(pump(s,1,6,3500)==619 && last_child==previous);
+    remove_file("hidraw11.block-open");assert(pump(s,1,6,3500)==619);
+    packet("hidraw11",&one,1);expect(s,1,6,620);
+    write_file("hidraw11.block-close",NULL,0);remove_file("hidraw11");
+    assert(pump(s,1,6,350)==620);packet("hidraw0",&one,1);expect(s,1,6,621);
+    assert(pump(s,1,6,3500)==621 && last_child==previous);
+    remove_file("hidraw11.block-close");
     previous=last_child;tm_hid_wheel_close(s);
     for(unsigned n=0;n<100 && !kill(previous,0);++n) {usleep(5000);tm_hid_wheel_close(NULL);}
     assert(kill(previous,0)<0 && errno==ESRCH);
     tm_hid_wheel_close(NULL);
     assert(waitpid(-1,NULL,WNOHANG)<0 && errno==ECHILD);
+}
+static void kernel_startup(void)
+{
+    write_file(".kernel-lock",NULL,0);
+    device_create("hidraw0",coarse,sizeof coarse);
+    uint8_t feature[]={2,1};
+    for(unsigned n=1;n<4;++n) {
+        char name[32],field[64];snprintf(name,sizeof name,"hidraw%u",n);
+        device_create(name,fine,sizeof fine);
+        snprintf(field,sizeof field,"%s.feature-2",name);write_file(field,feature,sizeof feature);
+    }
+    write_file("hidraw3.block-feature",NULL,0);
+    tm_hid_wheel *s=tm_hid_wheel_open(fixture);assert(s);
+    uint64_t deadline=now()+15000;
+    do {assert(!pump(s,1,0,20));assert(now()<deadline);}while(tm_hid_wheel_devices_ready(s)!=3);
+    pid_t worker=last_child;
+    uint8_t one=1,tick[]={1,1};packet("hidraw0",&one,1);expect(s,1,0,1);
+    for(unsigned n=0;n<8;++n) {packet("hidraw1",tick,2);packet("hidraw2",tick,2);}
+    expect(s,1,0,3);
+    assert(pump(s,1,0,3500)==3 && last_child==worker);
+    packet("hidraw0",&one,1);expect(s,1,0,4);
+    tm_hid_wheel_close(s);
+    for(unsigned n=0;n<100 && !kill(worker,0);++n) {usleep(5000);tm_hid_wheel_close(NULL);}
+    assert(kill(worker,0)<0 && errno==ESRCH);
+}
+static void cleanup_fixture(void)
+{
+    for(unsigned n=0;n<pinned_count;++n) assert(!close(pinned_nodes[n]));
+    pinned_count=0;
+    DIR *dir=opendir(fixture);assert(dir);struct dirent *entry;
+    while((entry=readdir(dir))) if(strcmp(entry->d_name,".") && strcmp(entry->d_name,"..")) remove_file(entry->d_name);
+    closedir(dir);assert(!rmdir(fixture));
 }
 int main(int argc,char **argv)
 {
@@ -413,9 +502,9 @@ int main(int argc,char **argv)
     }
     char directory[]="/tmp/tm-hid-wheel-XXXXXX";assert(mkdtemp(directory));strcpy(fixture,directory);
     lifecycle();
-    DIR *dir=opendir(fixture);assert(dir);struct dirent *entry;
-    while((entry=readdir(dir))) if(strcmp(entry->d_name,".") && strcmp(entry->d_name,"..")) remove_file(entry->d_name);
-    closedir(dir);assert(!rmdir(fixture));
+    cleanup_fixture();
+    char kernel_directory[]="/tmp/tm-hid-kernel-XXXXXX";assert(mkdtemp(kernel_directory));strcpy(fixture,kernel_directory);
+    kernel_startup();cleanup_fixture();
     puts("HID worker discovery, GET scaling, OSD gating, lifecycle, backpressure and watchdog checks passed");
     return 0;
 }

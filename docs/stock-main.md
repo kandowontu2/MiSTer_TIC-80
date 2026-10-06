@@ -250,7 +250,7 @@ refusal of an unexpected Main and protection of a user-selected different core.
 This driver requires a free, user-authorized test window before switching an
 occupied core. No candidate binaries are installed in this first test.
 
-The prepared current probe passes optimized host ASan/UBSan and ARM/QEMU
+The earlier prepared probe passes optimized host ASan/UBSan and ARM/QEMU
 descriptor/refusal checks (`build/native-hid-probe-v4-20261006/result.json`).
 The preceding CMake run passes the parser, private worker, probe descriptor and
 evdev fixture tests on both architectures. Its snapshot predates the added Main
@@ -258,8 +258,7 @@ identity/other-owner checks; those changes are compiled in the current probe.
 The Python driver's five offline rollback/ownership cases also pass through
 its registered CTest. The current host sanitizer CMake run passes all five
 selected decoder, worker, probe descriptor, evdev and driver tests
-(`build/hid-retry-cmake-20261006/result.json`). These checks prepare native execution; they do not claim
-that native execution has happened.
+(`build/hid-retry-cmake-20261006/result.json`). These checks prepared the first native execution.
 
 `tools/prepare_hid_native_candidate.py` separately freezes the new RBF and both
 production frontends, the published handler/CA file, the current native probe
@@ -267,6 +266,71 @@ and an exact copy of the published five-file rollback. Its `--frontend-build`
 argument selects a checked rebuild; source and executable hashes must match
 that build's passing receipt. The private manifest
 `build/hid-native-candidate-v3-20261006/manifest.json` excludes a Main payload
-and marks native qualification false. The MiSTer preflight confirms UHID,
-HIDraw and generic HID support; PICO-8 remains selected, and no virtual device
-has been created there by this work. Native execution awaits the test window.
+and marks native qualification false. It predates the subsequent device-I/O
+isolation repair and needs a fresh frontend rebuild before qualification.
+
+The user-authorized October 6 reader test created all four private mice and
+verified stock Main's exclusive evdev ownership for each. Its first coarse pan
+assertion failed (`build/hid-reader-native-v1-20261006`). A separate diagnostic
+run also failed, showing that the worker opened three devices and then stopped
+producing heartbeats (`build/hid-reader-native-trace-v2-20261006`). Both original
+failures are retained. The latter run successfully restored PICO-8.
+
+The running kernel is `6.18.38-MiSTer`. Its HIDraw behavior is consistent with
+the upstream [6.18 shared semaphore](https://raw.githubusercontent.com/torvalds/linux/v6.18/drivers/hid/hidraw.c):
+feature ioctls take a read lock, while opens and releases take a write lock.
+Moving only feature queries into helpers therefore leaves the central reader
+vulnerable to a blocked open or release. The revised per-device helpers own all
+raw opens, queries, reads and releases. The supervisor owns only their sockets
+and checks bounded deadlines without waiting for their exit. Unsupported
+devices remain cached; temporary failures retain backoff and reserved child
+slots. A readiness observation lets the native fixture wait for the three
+healthy devices' current-gate acknowledgments before injecting its first tick.
+Open acknowledgments now precede descriptor queries; feature GETs start after
+the descriptor phase completes. These barriers leave existing streaming
+helpers running. A shared-lock fixture models concurrent GET read locks and
+raw open/release write locks, alongside the existing per-device fault cases.
+
+The first isolated, tracing-enabled native run passed, but the subsequent
+uninstrumented run failed with only two healthy devices ready
+(`build/hid-reader-native-production-v4-20261006`). That startup failure remains
+preserved. After adding the explicit phases, the uninstrumented probe passes
+on the real MiSTer (`build/hid-reader-native-phases-v5-20261006`, original
+coordinator 96299, terminal native status 0). All four virtual devices retain
+verified stock Main evdev ownership. Coarse positive/negative pan, numbered
+and unnumbered scale-eight accumulation, stalled feature GET isolation, and
+direct active/epoch queue suppression pass, with the final total exactly four.
+Its driver verifies PICO-8 restoration and unchanged protected hashes; a fresh
+read-only review additionally verifies no helpers, virtual devices or aliases
+and all 4,377 cartridge metadata rows excluding exFAT inode numbers
+(`build/hid-reader-native-restoration-review-v7-20261006`). No candidate payload
+or Main was installed. This passes the reader-only gate; candidate FPGA/OSD
+and frontend `mouse()` qualification remain separate.
+
+The first restoration attempt also encountered a brief overlap of two stock
+Main processes. The driver now waits for a single verified stock process
+before dispatching. Nine offline cases check the overlap, refusal of changed
+Main, ambiguous launches, user core changes and cartridge metadata guards.
+The actual SD filesystem is exFAT, whose [inode numbers are allocated in memory](https://raw.githubusercontent.com/torvalds/linux/v6.18/fs/exfat/inode.c).
+The cartridge check retains paths, types, device numbers, sizes and timestamps,
+but excludes inode numbers for FAT-family filesystems. The separate read-only
+restoration review verifies PICO-8, unchanged protected hashes, no private
+helpers/aliases, and all 4,377 cartridge metadata entries excluding exFAT inode
+numbers (`build/hid-reader-native-restoration-review-v4-20261006`). This is a
+metadata check, not a full cartridge-content hash comparison.
+
+The final repair passes the optimized host ASan/UBSan and SDK ARM/QEMU worker
+matrix, including the shared kernel-lock startup model
+(`build/hid-kernel-phases-after-v7-20261006`). The registered CTest run passes
+all five selected parser, worker, probe descriptor, evdev and native-driver
+tests (`build/hid-phases-cmake-v4-20261006`). Its expanded recovery cases take
+about 38 seconds; the worker test timeout is now 60 seconds. The preceding
+30-second CTest timeout remains preserved in `build/hid-isolation-cmake-v2-20261006`.
+Both production frontends are rebuilt and pass target ABI, backend/input and
+worker-dispatch checks using the unchanged SDK runtime archives
+(`build/hid-frontends-v4-20261006`). Candidate
+`build/hid-native-candidate-v4-20261006/manifest.json` binds these new frontends,
+the current uninstrumented probe, the prepared FPGA, and exact published
+rollback files. It still marks full native qualification false: this reader
+test uses the published FPGA and directly supplied gate values, rather than
+the new FPGA's actual OSD epoch or the frontend's `mouse()` API.

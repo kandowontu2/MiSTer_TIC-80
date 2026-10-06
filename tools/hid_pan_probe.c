@@ -272,7 +272,12 @@ static int native(void)
     for(unsigned n=0;n<4;++n) earlier_sets[n]=devices[n].sets;
     int earlier_gets=devices[3].gets;devices[3].blocked=1;
     reader=tm_hid_wheel_open(directory);if(!reader) goto cleanup;
-    CHECK(pump(1000,1,0,&total));CHECK(total!=0);
+    deadline=now()+15000;
+    do {
+        CHECK(pump(20,1,0,&total));
+        if(now()>deadline) {fprintf(stderr,"Healthy HID devices did not become ready: %u\n",tm_hid_wheel_devices_ready(reader));goto cleanup;}
+    } while(tm_hid_wheel_devices_ready(reader)!=3);
+    CHECK(total!=0);
     CHECK(emit(&devices[0],1));CHECK(expect(1,1,0));
     CHECK(emit(&devices[0],-1));CHECK(expect(0,1,0));
     for(unsigned n=0;n<7;++n) {CHECK(emit(&devices[1],1));CHECK(emit(&devices[2],1));}

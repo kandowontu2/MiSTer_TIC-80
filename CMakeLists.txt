@@ -23,7 +23,9 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
     target_link_options(hid_wheel_test PRIVATE -Wl,--wrap=__read_chk)
     target_link_options(hid_wheel_test PRIVATE -Wl,--wrap=socketpair)
     add_test(NAME hid_horizontal_worker COMMAND hid_wheel_test)
-    set_tests_properties(hid_horizontal_worker PROPERTIES TIMEOUT 30)
+    # Recovery/watchdog cases deliberately span about 34 seconds, including
+    # the blocked-open/release cases. Leave room for sanitizer and QEMU runs.
+    set_tests_properties(hid_horizontal_worker PROPERTIES TIMEOUT 60)
     if(CMAKE_CROSSCOMPILING AND CMAKE_SYSTEM_PROCESSOR STREQUAL "arm" AND CMAKE_SYSROOT)
         # Self-executed children use host binfmt rather than CTest's explicit
         # qemu -L argument. Pass the same SDK loader root through their env.

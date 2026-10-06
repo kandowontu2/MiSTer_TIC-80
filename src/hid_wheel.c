@@ -20,22 +20,32 @@
 #include <time.h>
 #include <unistd.h>
 
+#ifdef TM_HID_WHEEL_TRACE
+#define TRACE(...) do { fprintf(stderr, "HID[%ld] ", (long)getpid()); fprintf(stderr, __VA_ARGS__); fputc('\n', stderr); } while (0)
+#else
+#define TRACE(...) ((void)0)
+#endif
+
 enum { DEVICES = 64, REPORTS_PER_DEVICE = 512, MESSAGES_PER_POLL = 64,
        RETIRED_WORKERS = 32, WORKER_SOCKET = 3 };
-enum { COMMAND_MAGIC = 0x43485754, RESPONSE_MAGIC = 0x52485754 };
+enum { COMMAND_MAGIC = 0x43485754, RESPONSE_MAGIC = 0x52485754,
+       PROBE_MAGIC = 0x50485754, READY_MAGIC = 0x44485754,
+       OPEN_MAGIC = 0x4f485754, QUERY_MAGIC = 0x51485754, FEATURE_MAGIC = 0x46485754 };
 typedef struct { uint32_t magic, value; uint64_t generation; } message;
 _Static_assert(sizeof(message) == 16, "HID worker wire size");
 typedef struct {
     int fd, seen, usable, retryable;
     unsigned failures;
+    unsigned phase;
     int probe_socket;
     pid_t probe_pid;
     uint64_t probe_deadline, next_probe;
+    uint64_t sent_generation, child_generation;
+    uint32_t child_total;
     char name[32];
     dev_t device, special; ino_t inode; struct timespec changed;
     tm_hid_pan pan;
 } device;
-typedef struct { int status; tm_hid_pan pan; } probe_result;
 typedef struct {
     device devices[DEVICES];
     const char *directory;
@@ -47,6 +57,7 @@ struct tm_hid_wheel {
     int socket, initialized, active, slot;
     unsigned epoch;
     uint32_t total, child_total;
+    unsigned ready;
     uint64_t generation, sent_generation, last_activity, next_spawn;
 };
 /* Deferred, specific-child reaping keeps close/restart from waiting on a USB
@@ -86,7 +97,7 @@ static void stop_worker(tm_hid_wheel *s, uint64_t now)
             retired[s->slot] = s->pid;
         } else occupied[s->slot] = 0;
     }
-    s->pid = 0; s->slot = -1; s->sent_generation = 0; s->child_total = 0;
+    s->pid = 0; s->slot = -1; s->sent_generation = 0; s->child_total = 0; s->ready = 0;
     s->next_spawn = now + 1000;
 }
 static int start_worker(tm_hid_wheel *s, uint64_t now)
@@ -110,6 +121,7 @@ static int start_worker(tm_hid_wheel *s, uint64_t now)
         posix_spawn_file_actions_destroy(&actions);
     }
     close(source);
+    TRACE("spawn status=%d child=%ld directory=%s", status, (long)s->pid, s->directory);
     if (status) { close(sockets[0]); s->pid = 0; return -1; }
     s->slot = slot; occupied[slot] = 1;
     s->socket = sockets[0]; s->sent_generation = 0; s->child_total = 0;
@@ -133,11 +145,12 @@ uint32_t tm_hid_wheel_poll(tm_hid_wheel *s, uint64_t now, int active, unsigned e
     if (!s->initialized || s->active != active || s->epoch != epoch) {
         s->initialized = 1; s->active = active; s->epoch = epoch;
         ++s->generation; if (!s->generation) ++s->generation;
-        s->child_total = 0;
+        s->child_total = 0; s->ready = 0;
     }
     if (s->pid > 0) {
         pid_t result = waitpid(s->pid,NULL,WNOHANG);
         if (result > 0 || (result < 0 && errno == ECHILD)) {
+            TRACE("worker departed child=%ld", (long)s->pid);
             stop_worker(s,now);
         }
     }
@@ -157,16 +170,21 @@ uint32_t tm_hid_wheel_poll(tm_hid_wheel *s, uint64_t now, int active, unsigned e
         message response;
         ssize_t bytes = recv(s->socket,&response,sizeof response,MSG_DONTWAIT|MSG_TRUNC);
         if (bytes < 0 && (errno == EAGAIN || errno == EWOULDBLOCK || errno == EINTR)) break;
-        if (bytes != sizeof response || response.magic != RESPONSE_MAGIC || !response.generation) {
+        if (bytes != sizeof response || (response.magic != RESPONSE_MAGIC && response.magic != READY_MAGIC) || !response.generation) {
             stop_worker(s,now); return s->total;
         }
         if (response.generation != s->generation) continue;
         s->last_activity = now;
+        if (response.magic == READY_MAGIC) { s->ready = response.value; continue; }
         if (active) s->total += response.value - s->child_total;
         s->child_total = response.value;
     }
-    if (now - s->last_activity > 3000) stop_worker(s,now);
+    if (now - s->last_activity > 3000) { TRACE("worker heartbeat expired"); stop_worker(s,now); }
     return s->total;
+}
+unsigned tm_hid_wheel_devices_ready(const tm_hid_wheel *s)
+{
+    return s ? s->ready : 0;
 }
 void tm_hid_wheel_close(tm_hid_wheel *s)
 {
@@ -204,7 +222,7 @@ static int name_valid(const char *s)
     for (s += 6; *s; ++s) if (*s < '0' || *s > '9') return 0;
     return 1;
 }
-static int configure(device *d)
+static int configure_descriptor(device *d)
 {
     int size = 0;
     struct hidraw_report_descriptor descriptor = {0};
@@ -214,6 +232,10 @@ static int configure(device *d)
     if (ioctl(d->fd,HIDIOCGRDESC,&descriptor) < 0 || descriptor.size != (uint32_t)size) return -2;
     int status = tm_hid_pan_parse(&d->pan,descriptor.value,descriptor.size);
     if (status <= 0) return status;
+    return tm_hid_pan_ready(&d->pan) ? 1 : 2;
+}
+static int configure_features(device *d)
+{
     uint8_t requested[256] = {0};
     for (unsigned n = 0; n < d->pan.multipliers; ++n) {
         unsigned id = d->pan.multiplier[n].report;
@@ -256,7 +278,47 @@ static void retry_probe(device *d, uint64_t now)
     if (d->failures < 5) ++d->failures;
     d->retryable = 1; d->next_probe = now + delay;
 }
-static void start_probe(device *d, uint64_t now)
+static uint32_t read_device(device *, int);
+static int wait_phase(int socket, uint32_t magic)
+{
+    for (;;) {
+        struct pollfd control = {socket,POLLIN,0};
+        if (poll(&control,1,100) < 0) { if (errno == EINTR) continue; return -1; }
+        if (control.revents & (POLLHUP|POLLERR|POLLNVAL)) return -1;
+        message command;
+        ssize_t bytes = recv(socket,&command,sizeof command,MSG_DONTWAIT|MSG_TRUNC);
+        if (bytes < 0 && (errno == EAGAIN || errno == EWOULDBLOCK || errno == EINTR)) continue;
+        return bytes == sizeof command && command.magic == magic && !command.value && !command.generation ? 0 : -1;
+    }
+}
+static int stream_device(device *d, int socket)
+{
+    uint64_t generation = 0; uint32_t total = 0; int active = 0;
+    for (;;) {
+        struct pollfd control = {socket,POLLIN,0};
+        if (poll(&control,1,5) < 0) { if (errno == EINTR) continue; return -2; }
+        if (control.revents & (POLLHUP|POLLERR|POLLNVAL)) return 0;
+        int boundary = 0;
+        for (unsigned n = 0; n < MESSAGES_PER_POLL; ++n) {
+            message command;
+            ssize_t bytes = recv(socket,&command,sizeof command,MSG_DONTWAIT|MSG_TRUNC);
+            if (bytes < 0 && (errno == EAGAIN || errno == EWOULDBLOCK || errno == EINTR)) break;
+            if (bytes != sizeof command || command.magic != COMMAND_MAGIC || command.value > 1 ||
+                !command.generation || command.generation <= generation) return -2;
+            generation = command.generation; active = (int)command.value;
+            total = 0; boundary = 1;
+        }
+        if (!generation) continue;
+        if (boundary) read_device(d,0);
+        total += read_device(d,active);
+        if (d->fd < 0) return -2;
+        message response = {RESPONSE_MAGIC,total,generation};
+        ssize_t bytes = send(socket,&response,sizeof response,MSG_DONTWAIT|MSG_NOSIGNAL);
+        if (bytes != sizeof response && (bytes >= 0 ||
+            (errno != EAGAIN && errno != EWOULDBLOCK && errno != EINTR))) return -2;
+    }
+}
+static void start_probe(device *d, uint64_t now, const char *directory)
 {
     int sockets[2];
     if (socketpair(AF_UNIX,SOCK_SEQPACKET|SOCK_NONBLOCK|SOCK_CLOEXEC,0,sockets)) {
@@ -265,45 +327,122 @@ static void start_probe(device *d, uint64_t now)
     pid_t parent = getpid(), child = fork();
     if (!child) {
         if (prctl(PR_SET_PDEATHSIG,SIGKILL) || parent != getppid()) _exit(1);
-        /* Descriptor/feature ioctls are isolated per device. A stalled USB
-         * request cannot hold the reader heartbeat or another device's pan. */
-        close_except(d->fd,sockets[1]);
-        probe_result result = {0};
-        result.status = configure(d); result.pan = d->pan;
+        /* No raw handles exist in the supervisor. Open, query, read and final
+         * release all stay here: HIDraw open/close can wait on the shared
+         * kernel semaphore held by another device's feature request. */
+        close_except(sockets[1],-1);
+        int dir = open(directory,O_RDONLY|O_DIRECTORY|O_CLOEXEC);
+        d->fd = dir < 0 ? -1 : openat(dir,d->name,O_RDONLY|O_NONBLOCK|O_CLOEXEC|O_NOFOLLOW);
+        if (dir >= 0) close(dir);
+        struct stat opened;
+        int status = -2;
+        if (d->fd >= 0 && !fstat(d->fd,&opened) && same(d,&opened)) {
+            message opened_message = {OPEN_MAGIC,0,0};
+            if (send(sockets[1],&opened_message,sizeof opened_message,MSG_NOSIGNAL) != sizeof opened_message ||
+                wait_phase(sockets[1],QUERY_MAGIC)) _exit(1);
+            status = configure_descriptor(d);
+        }
+        TRACE("configured %s status=%d fields=%u", d->name, status, d->pan.count);
+        message result = {PROBE_MAGIC,(uint32_t)status,0};
         ssize_t sent = send(sockets[1],&result,sizeof result,MSG_NOSIGNAL);
+        if (sent == sizeof result && status == 2) {
+            if (wait_phase(sockets[1],FEATURE_MAGIC)) _exit(1);
+            status = configure_features(d);
+            result.value = (uint32_t)status;
+            sent = send(sockets[1],&result,sizeof result,MSG_NOSIGNAL);
+        }
+        if (sent == sizeof result && status == 1) {
+            d->usable = 1;
+            stream_device(d,sockets[1]);
+        }
+        /* _exit performs the potentially blocking final raw release in this
+         * isolated process. Its slot is retained until waitpid confirms exit. */
         _exit(sent == sizeof result ? 0 : 1);
     }
     close(sockets[1]);
     if (child < 0) { close(sockets[0]); retry_probe(d,now); return; }
     d->retryable = 0;
+    d->phase = 0;
+    d->usable = 0; d->sent_generation = d->child_generation = 0; d->child_total = 0;
     d->probe_pid = child; d->probe_socket = sockets[0];
     d->probe_deadline = now + 1500;
 }
-static uint32_t read_device(device *, int);
-static void poll_probe(device *d, uint64_t now)
+static uint32_t poll_probe(device *d, uint64_t now, int active, uint64_t generation)
 {
-    if (!d->probe_pid) return;
+    uint32_t delta = 0;
+    if (!d->probe_pid) return 0;
     if (d->probe_socket >= 0) {
-        probe_result result;
-        ssize_t size = recv(d->probe_socket,&result,sizeof result,MSG_DONTWAIT|MSG_TRUNC);
-        if (size == sizeof result) {
-            if (result.status == -2) retry_probe(d,now);
-            else d->retryable = 0;
-            if (result.status == 1) {
-                d->failures = 0;
-                d->pan = result.pan; d->usable = 1;
-                /* Reports arriving during configuration have no current gate
-                 * baseline. Drain them before accepting gameplay motion. */
-                read_device(d,0);
+        /* Do not queue a gate before configuration succeeds. A rejected
+         * helper exits without reading commands; closing a sequence socket
+         * with unread commands can reset it and hide its rejection reply. */
+        if (d->usable && d->sent_generation != generation) {
+            message command = {COMMAND_MAGIC,(uint32_t)active,generation};
+            ssize_t sent = send(d->probe_socket,&command,sizeof command,MSG_DONTWAIT|MSG_NOSIGNAL);
+            if (sent == sizeof command) d->sent_generation = generation;
+            else if (sent >= 0 || (errno != EAGAIN && errno != EWOULDBLOCK && errno != EINTR)) {
+                retry_probe(d,now); stop_probe(d); return 0;
             }
-            stop_probe(d);
-        } else if (size >= 0 || (errno != EAGAIN && errno != EWOULDBLOCK && errno != EINTR) ||
-                   now >= d->probe_deadline) {
+        }
+        for (unsigned n = 0; n < MESSAGES_PER_POLL; ++n) {
+            message result;
+            ssize_t size = recv(d->probe_socket,&result,sizeof result,MSG_DONTWAIT|MSG_TRUNC);
+            if (size < 0 && (errno == EAGAIN || errno == EWOULDBLOCK || errno == EINTR)) break;
+            if (size != sizeof result) { retry_probe(d,now); stop_probe(d); break; }
+            if (result.magic == OPEN_MAGIC && !result.value && !result.generation && !d->phase) {
+                d->phase = 1;
+            } else if (result.magic == PROBE_MAGIC && !result.generation && !d->usable) {
+                int32_t status = (int32_t)result.value;
+                if (status == 2 && d->phase == 2) {
+                    d->phase = 3; d->probe_deadline = now + 5000;
+                    continue;
+                }
+                if (status != 1) {
+                    if (status == -2) retry_probe(d,now); else d->retryable = 0;
+                    stop_probe(d); break;
+                }
+                d->usable = 1; d->phase = 5; d->failures = 0;
+            } else if (result.magic == RESPONSE_MAGIC && d->usable && result.generation) {
+                if (result.generation != generation) continue;
+                if (d->child_generation != generation) {
+                    d->child_generation = generation; d->child_total = 0;
+                }
+                if (active) delta += result.value - d->child_total;
+                d->child_total = result.value;
+            } else { retry_probe(d,now); stop_probe(d); break; }
+            d->probe_deadline = now + 1500;
+            if (d->phase == 1) d->probe_deadline = now + 5000;
+        }
+        if (d->probe_socket >= 0 && now >= d->probe_deadline) {
+            TRACE("device timeout %s", d->name);
             retry_probe(d,now); stop_probe(d);
         }
-    } else {
+    }
+    if (d->probe_socket < 0 && d->probe_pid > 0) {
         pid_t result = waitpid(d->probe_pid,NULL,WNOHANG);
         if (result > 0 || (result < 0 && errno == ECHILD)) d->probe_pid = 0;
+    }
+    return delta;
+}
+static void advance_configuration(reader *s, uint64_t now)
+{
+    int opening = 0, descriptors = 0;
+    for (unsigned n = 0; n < DEVICES; ++n) {
+        device *d = &s->devices[n];
+        if (d->probe_socket < 0) continue;
+        if (!d->phase) opening = 1;
+        if (d->phase == 1 || d->phase == 2) descriptors = 1;
+    }
+    for (unsigned n = 0; n < DEVICES; ++n) {
+        device *d = &s->devices[n];
+        if (d->probe_socket < 0) continue;
+        uint32_t magic = !opening && d->phase == 1 ? QUERY_MAGIC :
+            !opening && !descriptors && d->phase == 3 ? FEATURE_MAGIC : 0;
+        if (!magic) continue;
+        message command = {magic,0,0};
+        if (send(d->probe_socket,&command,sizeof command,MSG_DONTWAIT|MSG_NOSIGNAL) == sizeof command) {
+            d->phase = magic == QUERY_MAGIC ? 2 : 4;
+            d->probe_deadline = now + 1500;
+        }
     }
 }
 static void scan(reader *s)
@@ -322,23 +461,20 @@ static void scan(reader *s)
         device *free_slot = NULL, *found = NULL;
         for (unsigned i = 0; i < DEVICES; ++i) {
             device *d = &s->devices[i];
-            if (d->fd >= 0 && !strcmp(d->name,entry->d_name)) {
+            if (*d->name && !strcmp(d->name,entry->d_name)) {
                 if (same(d,&metadata)) found = d; else drop(d);
             }
-            if (d->fd < 0 && !d->probe_pid && !free_slot) free_slot = d;
+            if (!*d->name && !d->probe_pid && !free_slot) free_slot = d;
         }
         if (found) { found->seen = 1; continue; }
         if (!free_slot) continue;
-        int fd = openat(dirfd(dir),entry->d_name,O_RDONLY|O_NONBLOCK|O_CLOEXEC|O_NOFOLLOW);
-        if (fd < 0) continue;
-        device *d = free_slot; struct stat opened;
+        device *d = free_slot;
         d->device = metadata.st_dev; d->special = metadata.st_rdev;
         d->inode = metadata.st_ino; d->changed = metadata.st_ctim;
-        if (fstat(fd,&opened) || !same(d,&opened)) { close(fd); continue; }
-        d->fd = fd; d->seen = 1; strcpy(d->name,entry->d_name);
+        d->seen = 1; strcpy(d->name,entry->d_name);
         /* Unsupported descriptors remain cached; temporary query failures
          * retry with backoff without disturbing other devices. */
-        start_probe(d,milliseconds());
+        start_probe(d,milliseconds(),s->directory);
     }
     closedir(dir);
     for (unsigned i = 0; i < DEVICES; ++i) if (!s->devices[i].seen) drop(&s->devices[i]);
@@ -356,7 +492,9 @@ static uint32_t read_device(device *d, int active)
         if (count <= 0) { drop(d); return total; }
         if (active) {
             int64_t detents;
-            if (tm_hid_pan_input(&d->pan,bytes,(size_t)count,&detents) > 0) total += (uint32_t)detents;
+            int parsed = tm_hid_pan_input(&d->pan,bytes,(size_t)count,&detents);
+            TRACE("report %s bytes=%ld parsed=%d detents=%lld", d->name, (long)count, parsed, (long long)detents);
+            if (parsed > 0) total += (uint32_t)detents;
         }
     }
     /* Fresh kernel queues prevent a blocked/gated backlog from leaking into
@@ -370,13 +508,14 @@ static void close_inherited(void)
 }
 int tm_hid_wheel_worker(int argc, char **argv)
 {
+    TRACE("worker entry argc=%d parent=%ld", argc, (long)getppid());
     if (argc != 4 || !argv[2] || !*argv[2]) return 2;
     char *end; errno = 0; long parent = strtol(argv[3],&end,10);
     if (errno || !*argv[3] || *end || parent <= 1 || parent != getppid()) return 2;
     if (prctl(PR_SET_PDEATHSIG,SIGKILL) || parent != getppid()) return 1;
     int type; socklen_t length = sizeof type;
     if (getsockopt(WORKER_SOCKET,SOL_SOCKET,SO_TYPE,&type,&length) || type != SOCK_SEQPACKET ||
-        fcntl(WORKER_SOCKET,F_SETFL,O_NONBLOCK) || setpriority(PRIO_PROCESS,0,0)) return 1;
+        fcntl(WORKER_SOCKET,F_SETFL,O_NONBLOCK) || setpriority(PRIO_PROCESS,0,0)) { TRACE("worker setup rejected errno=%d", errno); return 1; }
     close_inherited();
     reader *s = calloc(1,sizeof *s);
     if (!s) return 1;
@@ -384,13 +523,13 @@ int tm_hid_wheel_worker(int argc, char **argv)
     for (unsigned n = 0; n < DEVICES; ++n) {
         s->devices[n].fd = -1; s->devices[n].probe_socket = -1;
     }
-    uint64_t generation = 0; uint32_t total = 0; int active = 0, failed = 0;
+    uint64_t generation = 0, ready_generation = 0;
+    uint32_t total = 0; unsigned last_ready = 0; int active = 0, failed = 0;
     for (;;) {
         struct pollfd control = {WORKER_SOCKET,POLLIN,0};
         int ready = poll(&control,1,5);
         if (ready < 0) { if (errno == EINTR) continue; failed = 1; break; }
         if (control.revents & (POLLHUP|POLLERR|POLLNVAL)) break;
-        int boundary = 0;
         for (unsigned n = 0; n < MESSAGES_PER_POLL; ++n) {
             message command;
             ssize_t bytes = recv(WORKER_SOCKET,&command,sizeof command,MSG_DONTWAIT|MSG_TRUNC);
@@ -398,24 +537,38 @@ int tm_hid_wheel_worker(int argc, char **argv)
             if (bytes != sizeof command || command.magic != COMMAND_MAGIC || command.value > 1 ||
                 !command.generation || command.generation <= generation) { failed = 1; break; }
             generation = command.generation; active = (int)command.value;
-            total = 0; boundary = 1;
+            total = 0;
         }
         if (failed) break;
         if (!generation) continue;
-        if (boundary) for (unsigned n = 0; n < DEVICES; ++n) read_device(&s->devices[n],0);
         uint64_t now = milliseconds();
-        for (unsigned n = 0; n < DEVICES; ++n) poll_probe(&s->devices[n],now);
+        for (unsigned n = 0; n < DEVICES; ++n) total += poll_probe(&s->devices[n],now,active,generation);
         if (now >= s->next_scan) { scan(s); s->next_scan = now+250; }
         for (unsigned n = 0; n < DEVICES; ++n) {
             device *d = &s->devices[n];
-            if (d->fd >= 0 && d->retryable && !d->probe_pid && now >= d->next_probe)
-                start_probe(d,now);
+            if (*d->name && d->retryable && !d->probe_pid && now >= d->next_probe)
+                start_probe(d,now,s->directory);
         }
-        for (unsigned n = 0; n < DEVICES; ++n) total += read_device(&s->devices[n],active);
+        /* All opens finish before descriptor queries, and those finish before
+         * feature GETs. Otherwise a blocked GET's read lock can hold a queued
+         * raw open/release writer and thereby block unrelated descriptor reads.
+         * Existing streaming helpers keep running throughout these barriers. */
+        advance_configuration(s,now);
+        unsigned ready_devices = 0;
+        for (unsigned n = 0; n < DEVICES; ++n) {
+            device *d = &s->devices[n];
+            if (d->probe_socket >= 0 && d->usable && d->child_generation == generation) ++ready_devices;
+        }
         message response = {RESPONSE_MAGIC,total,generation};
         ssize_t bytes = send(WORKER_SOCKET,&response,sizeof response,MSG_DONTWAIT|MSG_NOSIGNAL);
         if (bytes != sizeof response && (bytes >= 0 ||
             (errno != EAGAIN && errno != EWOULDBLOCK && errno != EINTR))) { failed = 1; break; }
+        if (ready_generation != generation || last_ready != ready_devices) {
+            message readiness = {READY_MAGIC,ready_devices,generation};
+            if (send(WORKER_SOCKET,&readiness,sizeof readiness,MSG_DONTWAIT|MSG_NOSIGNAL) == sizeof readiness) {
+                ready_generation = generation; last_ready = ready_devices;
+            }
+        }
     }
     for (unsigned n = 0; n < DEVICES; ++n) drop(&s->devices[n]);
     free(s); close(WORKER_SOCKET); return failed;

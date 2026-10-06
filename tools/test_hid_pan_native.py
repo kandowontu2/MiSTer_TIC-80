@@ -27,6 +27,15 @@ ROOT = Path(__file__).resolve().parents[1]
 STOCK = "9f6e5a237c36be6404ab4823d804821491db4bf125827f84aca2a1ca31f0a8a6"
 
 
+def cartridge_metadata(text, filesystem):
+    # FAT-family inode numbers are assigned by the mounted driver, rather
+    # than persisted in directory entries. Keep every other observed field.
+    rows = text.splitlines()
+    if filesystem in ("vfat", "exfat", "msdos"):
+        rows = [row.split(":", 1)[0] + ":" + row.split(":", 2)[2] for row in rows]
+    return sorted(rows)
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--evidence", type=Path, required=True)
@@ -67,11 +76,21 @@ def main():
     def core():
         return run("cat /tmp/CORENAME").strip()
     def main_process():
-        pids = run("pidof MiSTer").split()
-        assert len(pids) == 1 and pids[0].isdigit(), pids
-        assert run("sha256sum /proc/" + pids[0] + "/exe").split()[0] == STOCK
-        assert run("sha256sum /media/fat/MiSTer").split()[0] == STOCK
-        return pids[0]
+        deadline = time.monotonic() + 30
+        while True:
+            assert run("sha256sum /media/fat/MiSTer").split()[0] == STOCK
+            pids = run("pidof MiSTer").split()
+            assert all(pid.isdigit() for pid in pids), pids
+            verified = []
+            for pid in pids:
+                digest = run("if test -e /proc/" + pid + "/exe; then sha256sum /proc/" + pid + "/exe; fi").split()
+                assert not digest or digest[0] == STOCK, (pid, digest)
+                if digest:
+                    verified.append(pid)
+            if len(pids) == 1 and verified == pids and run("pidof MiSTer").split() == pids:
+                return pids[0]
+            assert time.monotonic() < deadline, ("Main did not settle", pids)
+            time.sleep(.2)
     def dispatch(label, text):
         r["dispatches"].append({"name": label, "command": text, "time": time.time()})
         save()  # A lost reply never authorizes retrying this mutation.
@@ -128,6 +147,9 @@ def main():
         r["restore_file_sha256"] = run("sha256sum " + shlex.quote(restore_path)).split()[0]
         r["before"] = snapshot()
         assert all(r["before"][p] == digest for p, digest in expected.items())
+        mounts = run("cat /proc/mounts")
+        r["cartridge_filesystem"] = next(line.split()[2] for line in mounts.splitlines()
+                                          if line.split()[1] == "/media/fat")
         r["carts_before"] = run("find /media/fat/games/TIC-80/Carts -exec stat -c '%d:%i:%s:%Y:%Z:%F %n' {} +")
         save()
         if args.initial_core != "MENU":
@@ -237,7 +259,8 @@ def main():
                 assert r["before"] == r["after"], "Protected installation/configuration changed"
                 if "carts_before" in r:
                     r["carts_after"] = run("find /media/fat/games/TIC-80/Carts -exec stat -c '%d:%i:%s:%Y:%Z:%F %n' {} +")
-                    assert r["carts_before"] == r["carts_after"], "Cartridge tree changed"
+                    assert cartridge_metadata(r["carts_before"], r["cartridge_filesystem"]) == cartridge_metadata(
+                        r["carts_after"], r["cartridge_filesystem"]), "Cartridge tree changed"
                 main_process()
                 r["final_core"] = core()
                 assert r["final_core"] == args.initial_core, "Core changed before final restoration verification"
