@@ -6,10 +6,9 @@ controller transport and MiSTer OSD integration. The architecture and launcher
 arrangement follow [MiSTer PICO-8](https://github.com/MiSTerOrganize/MiSTer_PICO-8).
 
 **Development preview:** the Frontier installer preserves your shared MiSTer
-executable. Complete runtime qualification with stock Main is still pending.
-The working prototype's hardware results used its experimental companion Main;
-those results do not establish compatibility of this preview with every stock
-installation. See [tested scope and remaining work](docs/stock-main.md).
+executable. The October 6 preview passes bounded native stock-Main loading,
+playback, Save and recovery checks; current-binary human output and physical
+controls remain pending. See [tested scope and remaining work](docs/stock-main.md).
 
 ## Install
 
@@ -79,31 +78,25 @@ logs are in `logs/TIC-80`. Existing frontend selection is preserved on install.
 
 ## Tested scope
 
-The matched development prototype passed both frontends' ten-minute stereo
-music/save/memory checks, fourteen languages across three cartridge formats,
-and physical Xbox, mouse and Bluetooth-keyboard diagnostics. Standard HDMI
-720p/60 was confirmed on the test TV. The installer has thirteen local
-installer/package checks and a read-only bundle check on the MiSTer. A user-run
-clean installation is confirmed, with all five installed release payload hashes
-verified and the shared stock MiSTer executable preserved.
-
-Pending work includes complete stock-Main startup/reset/source-save behavior
-and native qualification of per-core horizontal scrolling, broader Studio/cart/API coverage,
-Bluetooth power-cycle/multi-controller coverage, CRT, physical microphone/FFT,
-SD power-loss durability, and complete external timing/latency qualification.
-See [release status](docs/release-status.md), [validation](docs/validation.md),
-and the [detailed development record](DEVELOPMENT.md). This preview is not a
-finished universal-compatibility release.
-
-The newer stock-Main candidate passes 84 integrated language/format/frontend
+The October 6 stock-Main preview passes 84 integrated language/format/frontend
 loads with exact cartridge bytes and full scaler RGB comparisons, separate
 ten-minute player/Studio music soaks, synthetic mouse/OSD checks, startup/reload
 and private Studio Save workflows, and native bad-cartridge/worker recovery.
 Its current binaries still need human picture/stereo and physical-control
-confirmation. Candidate installer bundles include a checksum-bound
+confirmation. The installer passes local integrity checks and a native read-only
+check of all 61 staged script/bundle files. The user confirmed clean installation
+of the earlier preview; this updated bundle has not yet been installed on the
+test MiSTer. Installer bundles include a checksum-bound
 `docs/TIC-80/qualification.json` identifying the exact payloads, bounded
 evidence and outstanding checks. Packaging these records does not transfer
 the older prototype's physical qualification to the new binaries.
+
+Broader Studio/cart/API and startup/fault coverage, Bluetooth power-cycle and
+multi-controller coverage, CRT, physical microphone/FFT, SD power-loss durability,
+and complete external timing/latency qualification remain open. See
+[release status](docs/release-status.md), [validation](docs/validation.md), and
+the [detailed development record](DEVELOPMENT.md). This preview is not a
+finished universal-compatibility release.
 
 ## Credits and license
 

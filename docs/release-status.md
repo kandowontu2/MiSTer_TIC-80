@@ -1,5 +1,27 @@
 # Release status
 
+The latest public development release is
+[v0.1.0-dev.20261006](https://github.com/kandowontu2/MiSTer_TIC-80/releases/tag/v0.1.0-dev.20261006).
+It contains exact tested player `2a03b849`, Studio `e3613638`, RBF `5595ba32`,
+handler `edbf962c` and CA bundle `a41b5d35`, with no replacement Main. The
+installer and corresponding-source archives are independently checked and
+GitHub's uploaded asset digests match them. All 49 notices, five screenshots
+with capture origins, usage/install/build instructions and a checksum-bound
+qualification record are included. Source is frozen at `c1a1b858`.
+
+A fresh private native installer `--check` verifies all 61 script/bundle files
+while installed Studio continues running. Twelve protected paths, the existing
+installer and 4,377 games-folder metadata rows are unchanged. This checks the
+new bundle; it does not run installation or reuse the old installed payloads
+as substitutes. Evidence is
+`build/stock-main-release-installer-native-v1-20261006/result.json` and
+`build/stock-main-release-packages-review-v1-20261006.json`. The new preview is
+published, but the board still has the earlier preview installed. Exact-current
+human HDMI/stereo, physical controls and final installation acceptance remain
+pending. Full release qualification is false.
+
+## Earlier preview and candidate validation record
+
 Updated October 6, 2026 UTC. The published
 [Frontier preview](https://github.com/kandowontu2/MiSTer_TIC-80/releases/tag/v0.1.0-dev.20261005)
 is now installed through its own script. The user confirmed the installation
